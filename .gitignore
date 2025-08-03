@@ -1,0 +1,44 @@
+# Entornos Virtuales
+/venv
+/.env
+/env
+/virtual
+/bin
+/include
+/lib
+/lib64
+
+# Archivos de caché de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Archivos de distribución / instalación
+/dist/
+/build/
+*.egg-info/
+*.egg
+
+# Archivos de configuración del editor
+.vscode/
+.idea/
+.project
+
+# Archivos de dependencias y testing
+pip-wheel-metadata/
+.pytest_cache/
+.coverage
+
+# Archivos de variables de entorno (¡Importante para la seguridad!)
+*.env
+.env.*
+
+# Archivos y directorios mpbe
+/0_Pruebas
+/0_diseno_y_notas
+kivy_logs/
+Referencias/
+z_Pruebas/
+zip/
+

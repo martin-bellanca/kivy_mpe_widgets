@@ -1,0 +1,10 @@
+{"_comment": "type is dark or light",
+"type": "dark",
+"background_app":       [0.150, 0.150, 0.170, 1.0],
+"background_windows":   [0.150, 0.150, 0.170, 1.0],
+"background_text":      [0.745, 0.753, 0.820, 1.0],
+"background_bars":      [0.259, 0.274, 0.321, 1.0],
+"background_frame":     [0.850, 0.850, 0.850, 1.0],
+"background_list":      [0.850, 0.850, 0.850, 1.0],
+"background_disable":   [0.053, 0.243, 0.394, 1.0]
+}

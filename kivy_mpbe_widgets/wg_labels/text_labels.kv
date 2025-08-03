@@ -1,0 +1,12 @@
+# -*- coding: utf-8 -*-
+# Kivy version 1.10
+
+<TextLabel>:
+    # Ids Internals Widgets ---------------
+    text_size: self.size
+    #text_size: self.width, None
+    width: self.texture_size[0] if self.size_hint_x == None else self.size_hint_x * root.width
+    height: self.texture_size[1] if self.size_hint_y == None else self.size_hint_y * root.height
+
+
+
