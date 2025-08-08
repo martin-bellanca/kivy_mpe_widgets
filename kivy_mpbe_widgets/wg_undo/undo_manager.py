@@ -30,7 +30,7 @@ Created on 03/08/2025
 '''
 
 
-class Command:
+class Command():
     """Clase base abstracta para todos los comandos."""
     def execute(self):
         raise NotImplementedError
@@ -39,7 +39,7 @@ class Command:
         raise NotImplementedError
 
 
-class UndoManager:
+class UndoManager():
     def __init__(self):
         self.undo_stack = []
         self.redo_stack = []
