@@ -30,7 +30,7 @@ Created on 03/08/2025
 '''
 
 
-class Command():
+class Command:
     """Clase base abstracta para todos los comandos."""
     def execute(self):
         raise NotImplementedError
@@ -43,6 +43,10 @@ class UndoManager():
     def __init__(self):
         self.undo_stack = []
         self.redo_stack = []
+
+    def clear_stack(self):
+        self.undo_stack.clear()
+        self.redo_stack.clear()
 
     def execute(self, command):
         """Ejecuta un nuevo comando y lo guarda en el historial."""
