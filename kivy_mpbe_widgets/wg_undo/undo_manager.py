@@ -48,6 +48,12 @@ class UndoManager():
         self.undo_stack.clear()
         self.redo_stack.clear()
 
+    def add(self, command):
+        """Añade un comando al historial sin ejecutarlo."""
+        self.undo_stack.append(command)
+        # Una nueva acción borra el historial de "redo"
+        self.redo_stack.clear()
+
     def execute(self, command):
         """Ejecuta un nuevo comando y lo guarda en el historial."""
         command.execute()

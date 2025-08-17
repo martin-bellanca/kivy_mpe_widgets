@@ -381,7 +381,7 @@ class MDLine(EventDispatcher):
         if old_type != self.type:
             # ToDo esto tiene que cambiar a chequear en funcion del valor del anterior si hay que actualizar la estructura del arbol
             # Si viejo tenia arbol, hay que modificarlo
-            self._activate_type()
+            # self._activate_type()
             return old_type
         else:
             return None
@@ -401,7 +401,7 @@ class MDLine(EventDispatcher):
         '''Actualizacion automatica de los numeros de linea'''
         # print(f"MDLine.on_num_line")
         if self.next_line:
-            # print(f"  value= {value}-> {self.md_text}")
+            print(f"  value= {value}-> {self.md_text}")
             self.next_line.num_line = value + 1
 
 
@@ -680,7 +680,10 @@ class MDDocument(object):
 
     def insert_line(self, id_line, md_text_line):
         '''Inserta una nueva linea delante del id_line indicado'''
-        prev_line = self._md_lines[id_line-1]
+        if id_line > 0:
+            prev_line = self._md_lines[id_line-1]
+        else:
+            prev_line = None
         next_line = self._md_lines[id_line]
         new_line = MDLine(md_text_line, type=MD_LINE_TYPE.TEXT, prev_line=prev_line, next_line=next_line)
         self._md_lines.insert(id_line, new_line)

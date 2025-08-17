@@ -543,6 +543,7 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         self._active_index = -1
         self._cursor = (1000, -1)  # es una tupla (columna, fila)
         self._mode_editor = False
+        self._old_text_line = None  # Guarda el texto de la linea antes de editarla
         # Altura del layout de items
         # Nota: Hay que mantenerla actualizada con el agregado, borrado y cambio de tamañano del item en edicion
         # self.layout_height = 0
@@ -556,6 +557,7 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
             data_line = DocLineDataDic(id=None, md_line=mdl)  # no uso el id del data. Uso md_line.num_line que se auto-actualiza
             dic_line = data_line.to_dict()
             self.data.append(dic_line)
+        pass
         # self.doc_editor.refresh_from_data()
         # self.update_layout_height()  NO ANDA
 
@@ -695,8 +697,9 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
     def select_indexs(self, indexs, anim=False):
         self._selected_indexs = indexs  # Re Seleccion las lineas
         for ii in indexs:
-            self.data[ii]['selected'] = True
-            self.data[ii]['start_anim'] = anim
+            if -1 < ii and ii < len(self.data):
+                self.data[ii]['selected'] = True
+                self.data[ii]['start_anim'] = anim
 
     def unselect_item(self, item, anim=False):  # TODO: cambiar a unselect_from_item
         # print(f'RecycleListView.unselect - {item.file_name} -------------------')
@@ -720,7 +723,8 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         self.activate_from_data(self.data[item.index], cursor_pos=cursor_pos, anim=anim)
 
     def activate_from_index(self, index, cursor_pos=None, anim=False):
-        self.activate_from_data(self.data[index], cursor_pos=cursor_pos, anim=anim)
+        if -1 < index and index < len(self.data):
+            self.activate_from_data(self.data[index], cursor_pos=cursor_pos, anim=anim)
 
     def activate_from_data(self, data_item, cursor_pos=None, anim=False):
         '''
@@ -731,6 +735,9 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         data_item['selected'] = True
         data_item['start_anim'] = anim
         data_item['cursor'] = self._cursor if cursor_pos == None else cursor_pos
+
+        print(f'+++ Cursor= {data_item["cursor"]} ------------------------------')
+
         data_item['active'] = True
         data_item['mode_editor'] = self._mode_editor
         self._active_index = data_item['md_line'].num_line - 1
@@ -738,50 +745,55 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         if not self._active_index in self._selected_indexs:
             self._selected_indexs.append(self._active_index)
         print(f'  Lista de Seleccionados{self._selected_indexs}')
-
+        self._old_text_line = data_item['md_line'].md_text
         self.refresh_from_data()
         ActivateItemEventDispatcher.do_something(self, data_item, self._active_index)
 
-    def unactivate_from_item(self, item, anim=False):
-        self.unactivate_from_data(self.data[item.index], anim=anim)
+    # def unactivate_from_item(self, item, anim=False):
+    #     self.unactivate_from_data(self.data[item.index], anim=anim)
 
-    def unactivate_from_index(self, index, anim=False):
-        if -1 < index and index < len(self.data):
-            self.unactivate_from_data(self.data[index], anim=anim)
+    # def unactivate_from_index(self, index, anim=False):
+    #     if -1 < index and index < len(self.data):
+    #         self.unactivate_from_data(self.data[index], anim=anim)
 
-    def unactivate_from_data(self, data_item, anim=False):
-        '''anim puede ser True, False o una tupla que indica la pos de inicio de la animacion'''
-        print("MDDocumentEditor.unactivate_from_data(...))")
-        sel_item = self.item_from_index(data_item['md_line'].num_line - 1)
-        for ix in self._selected_indexs:
-            self.data[ix]['selected'] = False
-        self._selected_indexs.clear()
-        if sel_item:
-            # self._cursor = sel_item.wg_line_editor.md_editor.cursor
-            # print(f"    En modo edicion: {self._cursor_col}, {self._item_selected.wg_line_editor.cursor_col}")
-            data_item['start_anim'] = anim
-            data_item['active'] = False
-            data_item['mode_editor'] = False
-            self.refresh_from_data()
-            data_item['start_anim'] = False
-            self._active_index = -1
-            UnActivateItemEventDispatcher.do_something(self, data_item, data_item['md_line'].num_line - 1)
+    # def unactivate_from_data(self, data_item, anim=False):
+    #     '''anim puede ser True, False o una tupla que indica la pos de inicio de la animacion'''
+    #     print("MDDocumentEditor.unactivate_from_data(...))")
+    #     sel_item = self.item_from_index(data_item['md_line'].num_line - 1)
+    #     for ix in self._selected_indexs:
+    #         self.data[ix]['selected'] = False
+    #     self._selected_indexs.clear()
+    #     if sel_item:
+    #         # self._cursor = sel_item.wg_line_editor.md_editor.cursor
+    #         # print(f"    En modo edicion: {self._cursor_col}, {self._item_selected.wg_line_editor.cursor_col}")
+    #         data_item['start_anim'] = anim
+    #         data_item['active'] = False
+    #         data_item['mode_editor'] = False
+    #         self.refresh_from_data()
+    #         data_item['start_anim'] = False
+    #         self._active_index = -1
+    #         self._old_text_line = None
+    #         UnActivateItemEventDispatcher.do_something(self, data_item, data_item['md_line'].num_line - 1)
 
     def unactivate(self, anim=False):
         '''anim puede ser True, False o una tupla que indica la pos de inicio de la animacion'''
         print("MDDocumentEditor.unactivate_from_data(...))")
         
         for ix in self._selected_indexs:
-            self.data[ix]['selected'] = False
-            self.data[ix]['mode_editor'] = False
+            if ix < len(self.data)-1:
+                self.data[ix]['selected'] = False
+                self.data[ix]['mode_editor'] = False
         self._selected_indexs.clear()
         if -1 < self._active_index < len(self.data):
             data_item = self.data[self._active_index]
             # self._cursor = sel_item.wg_line_editor.md_editor.cursor
             # print(f"    En modo edicion: {self._cursor_col}, {self._item_selected.wg_line_editor.cursor_col}")
-            data_item['start_anim'] = anim
+            # data_item['start_anim'] = anim
+            # data_item['mode_editor'] = False
+            
+            self.in_editing(False, anim=anim)  # Desactiva el modo de edicion
             data_item['active'] = False
-            data_item['mode_editor'] = False
+            
             self.refresh_from_data()
             data_item['start_anim'] = False
             self._active_index = -1
@@ -791,10 +803,13 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         print("MDDocumentEditor.move_to_previus_item()")
         print(f'  Active Index= {self._active_index}')
         if self._active_index > 0:
-            item_prev = self.item_from_index(self._active_index)
+            # item_prev = self.item_from_index(self._active_index)
             index = self._active_index - 1 if self._active_index > 0 else 0
             # print(f'  active index= {self._active_index}')
-            self.unactivate_from_index(self._active_index, anim=True)
+            
+            self.unactivate(anim=True)  # Desactiva el modo de edicion del item actual
+            # self.unactivate_from_index(self._active_index, anim=True)
+            
             # print(f'  active index= {self._active_index}, despues de unactivate')
             # Actualiza la vista para que el nuevo item este visible
             item = self.item_from_index(index)
@@ -811,12 +826,15 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         return item
 
     def active_to_next_item(self, cursor_pos=None):
-        print("MDDocumentEditor.move_to_next_item()")
-        print(f'  Active Index= {self._active_index}')
+        # print("MDDocumentEditor.move_to_next_item()")
+        # print(f'  Active Index= {self._active_index}')
         if self._active_index > -1:
             item_prev = self.item_from_index(self._active_index)
             index = self._active_index + 1 if self._active_index < len(self.data) - 1 else len(self.data) - 1
-            self.unactivate_from_index(self._active_index, anim=True)
+            
+            # self.unactivate_from_index(self._active_index, anim=True)
+            self.unactivate(anim=True)  # Desactiva el modo de edicion del item actual
+
             # Actualiza la vista para que el nuevo item este visible
             if item_prev:
                 if self.item_scroll_pos_y(item_prev) - item_prev.height < 0:
@@ -916,60 +934,33 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         self.refresh_from_data()
         return md_line
 
-    def insert_line(self, index:int, md_text:str=''):  #, dic_data_line:dict=None):
+    def insert_line(self, index:int, md_text:str=''):
         """Inserta una linea en el indice indicado"""
         # print('MDDocument.insert_lines() -----------------------')
-        # print('  Lineas actuales:')
-        # for ii in range (index-2, index+2):
-        #     print(f'    {ii}: {self._md_lines[ii].md_text}')
-
-        #ESTA ASIGNANDO MAL PREV Y NEXT LINE
-        print("+"*80)
-        print(f"Linea a Insertar: ix={index}, {md_text}")
-        print(f"    Anterior: ix={index-1}, {self._md_lines[index-1].md_text}, {self._md_lines[index-1].uid}")
-        print()
-
-
-        md_line = MDLine(md_text=md_text,
-                         prev_line=self._md_lines[index-1], next_line=self._md_lines[index],
-                         type=MD_LINE_TYPE.TEXT, num_line=0)
-
-
-
-        # Inserta md_line y ajusta las dependendencias
-        self._md_lines.insert(index, md_line)
-        md_line.update_type()
-        self._md_lines[index - 1].next_line = self._md_lines[index]
-        self._md_lines[index + 1].prev_line = self._md_lines[index]
-        md_line.num_line = index + 1
-
-        print(f"    Linea Anterior:   ix={index-1}, {self._md_lines[index-1].md_text}, {self._md_lines[index-1].uid}, {self._md_lines[index].prev_line.uid}")
-        print(f"    Linea INSERTADA:  ix={index}, {self._md_lines[index].md_text}")
-        print(f"    Linea Posterior:  ix={index+1}, {self._md_lines[index+1].md_text}, {self._md_lines[index+1].uid}, {self._md_lines[index].next_line.uid}")
-        print()
-
-
-        # print('  Lineas Insertadas:')
-        # for ii in range(index - 2, index + 2):
-        #     print(f'              previus line: {self._md_lines[ii].prev_line.uid}')
-        #     print(f'    {ii}, {self._md_lines[ii].uid}: Num_line= {self._md_lines[ii].num_line},  {self._md_lines[ii].md_text}')
-        #     print(f'              next line: {self._md_lines[ii].next_line.uid}')
-        #     print( '    ------------------------------------------------------------------------------------------------')
-
-        # Inserta en data
-        ## if not dic_data_line:
-        data_line = DocLineDataDic(index+1, md_line)
-        dic_data_line = data_line.to_dict()
-        
-        self.data.insert(index, dic_data_line)
-        # Refresca el View
-        self.refresh_from_data()
-        return md_line
+        if -1 < index < len(self._md_lines):
+            md_line = MDLine(md_text=md_text,
+                            prev_line=self._md_lines[index-1], next_line=self._md_lines[index],
+                            type=MD_LINE_TYPE.TEXT, num_line=0)
+            # Inserta md_line y ajusta las dependendencias
+            self._md_lines.insert(index, md_line)
+            md_line.update_type()
+            if index > 0:
+                self._md_lines[index - 1].next_line = self._md_lines[index]
+            else:
+                self._md_lines[index].prev_line = None
+            self._md_lines[index + 1].prev_line = self._md_lines[index]
+            md_line.num_line = index + 1
+            # Inserta en data ---------------------------------------
+            data_line = DocLineDataDic(index+1, md_line)
+            dic_data_line = data_line.to_dict()
+            self.data.insert(index, dic_data_line)
+            # Refresca el View --------------------------------------
+            self.refresh_from_data()
+            return md_line
+        else:
+            return None
 
     def remove_line(self, index:int):
-        print('MDDocument.remove_line --------------------------')
-        print(f'  Linea a borrar: index={index}, texto={self._md_lines[index].md_text}')
-
         # Ajusta los indices de los Items Seleccionados
         for ii, value in enumerate(self._selected_indexs, start=0):
             if value > index:
@@ -977,28 +968,32 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
             # print(f'ii={ii}, value={value}, nuevo valor={self._selected_indexs[ii]}')
         # Borrar en _md_lines y ajusta las dependendencias
         del(self._md_lines[index])
-        self._md_lines[index].num_line = index + 1
-        self._md_lines[index].prev_line = self._md_lines[index-1]
-        self._md_lines[index-1].next_line = self._md_lines[index]
+        if index < len(self._md_lines)-1:
+            if index > 0:
+                self._md_lines[index-1].next_line = self._md_lines[index]
+                self._md_lines[index].prev_line = self._md_lines[index-1]
+            else:
+                self._md_lines[index-1].next_line = None
+                self._md_lines[index].prev_line = None
+            self._md_lines[index].num_line = index + 1
         # Borra en el data
         del(self.data[index])
         # Refresca el View
-
         self.refresh_from_data()
-
-        # print('  Depues de Borrar:')
-        # for ii in range(index - 2, index + 2):
-        #     print(f'              previus line: {self._md_lines[ii].prev_line.uid}')
-        #     print(f'    {ii}, {self._md_lines[ii].uid}: Num_line= {self._md_lines[ii].num_line},  {self._md_lines[ii].md_text}')
-        #     print(f'              next line: {self._md_lines[ii].next_line.uid}')
-        #     print( '    ------------------------------------------------------------------------------------------------')
 
     def in_editing(self, value:bool, anim:bool=False):
-        self._mode_editor =not(self._mode_editor)
-        self.data[self._active_index] ['mode_editor'] = value
-        self.data[self._active_index]['cursor'] = self._cursor
-        self.data[self._active_index]['start_anim'] = anim
-        self.refresh_from_data()
+        if not value and self._mode_editor and self._old_text_line != self.active_md_editor().text:
+            self.undo_manager.add(_TextModifiedCommand(self, self._active_index, self._old_text_line, self.active_md_editor().text))
+        # self._mode_editor =value
+        if -1 < self._active_index < len(self.data):
+            self.data[self._active_index] ['mode_editor'] = value
+            self.data[self._active_index]['cursor'] = self._cursor
+            self.data[self._active_index]['start_anim'] = anim
+            if value:
+                self._old_text_line = self.data[self._active_index]['md_line'].md_text
+            self.refresh_from_data()
+        else:
+            self._active_index = -1
 
     '''Eventos de Usuario --------------------------------------------------------'''
     def on_touch_down(self, touch):
@@ -1024,11 +1019,14 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
                 if self._active_index != item.index:
                     # print(f'  RecycleListView.on_touch_down UNSELECT ++++++++++++++++++++++++++++')
                     if self._active_index > -1:
-                        self.unactivate_from_index(self._active_index, anim=True)
-                    # print(f'  RecycleListView.on_touch_down SELECT {self._select_index} y {item.index}')
+                        self.unactivate(anim=True)
+                self.in_editing(True)
                 self._mode_editor = True
                 cursor = item.wg_line_editor.md_editor.get_cursor_from_xy(*self.to_local(*touch.pos))
                 self.activate_from_item(item, cursor)
+                print(f'+++ Cursor desde touch= {cursor} -------------------------------')
+
+
                 touch.ungrab(self)
                 return True
                 # self.refresh_from_data()  # no hace falta por que actualizo en select_item y unselect_item
@@ -1078,18 +1076,20 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
                 ix_actual = min(self._selected_indexs) - 1
                 ix_new = max(self._selected_indexs)
                 if ix_actual > -1:
-                    self.move_line_to(ix_actual, ix_new)
+                    self.undo_manager.execute(_MoveLinesCommand(self, ix_actual, ix_new))
             elif keycode == 274 and all(kk in special_keys for kk in ['shift', 'ctrl']):  # Mueve el bloque hacia abajo
-                print('  Flecha Abajo con Ctrl y Shift (mueve el bloque hacia abajo)')
                 # Se supone que la lista es continua sin seleccion intercalada.
                 # En este contecto borro la lines inferior a la seleccion y la pego sobre la seleccion
                 ix_new = min(self._selected_indexs)
                 ix_actual = max(self._selected_indexs) + 1
                 if ix_actual < len(self.data):
-                    self.move_line_to(ix_actual, ix_new)
-            elif char == 'c' and 'ctrl' in special_keys:  # Ctrl + C, Copiar
+                    self.undo_manager.execute(_MoveLinesCommand(self, ix_actual, ix_new))
+            elif not in_edition and char == 'c' and 'ctrl' in special_keys:  # Ctrl + C, Copiar
                 # print(f'texto seleccionado: {md_editor.selection_text}')
                 # Crea el texto a copiar
+
+                # SACAR not in_edition and Y VERIFICAR SI EL TEXTO EN EDICION LA SELECCION ES 0 COPIA LA LINEA SINO RETORNA TRUE
+
                 if not in_edition or len(md_editor.selection_text) == 0:
                     cp_txt = ''
                     for ii in range(0, len(self._selected_indexs)-1):
@@ -1099,7 +1099,7 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
                     return True
                 else:
                     return False
-            elif char == 'v' and 'ctrl' in special_keys:  # Ctrl + V, Pegar
+            elif not in_edition and char == 'v' and 'ctrl' in special_keys:  # Ctrl + V, Pegar
                 # print('  Ctrl + v')
                 pasted_text = Clipboard.paste()
                 if isinstance(pasted_text, str):  # Verifica compatibilidad del texto
@@ -1111,15 +1111,17 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
                         ix_i = self._active_index + 1 if self._active_index > -1 and self._active_index < u_line else u_line
                         print(f'    ix_i= {ix_i}, u line= {u_line}')
                         # Inserta las lineas
-                        for id, txt in enumerate(pasted_list, start=0):
-                            if ix_i < u_line:
-                                self.insert_line(ix_i+id, txt)
-                            else:
-                                self.append_line(txt)
+                        self.undo_manager.execute(_InsertLinesCommand(self, self._active_index, pasted_list))
+
+                        # for id, txt in enumerate(pasted_list, start=0):
+                        #     if ix_i < u_line:
+                        #         self.insert_line(ix_i+id, txt)
+                        #     else:
+                        #         self.append_line(txt)
                         return True
                     else:
                         return False
-            elif char == 'x' and 'ctrl' in special_keys:  # Ctrl + X, Cortar
+            elif not in_edition and char == 'x' and 'ctrl' in special_keys:  # Ctrl + X, Cortar
                 # Corta la seleccion
                 print('  Ctrl + x')
                 # Crea el texto a copiar
@@ -1127,28 +1129,25 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
                     cp_txt = ''
                     for ii in range(0, len(self._selected_indexs) - 1):
                         cp_txt += self._md_lines[self._selected_indexs[ii]].md_text + '\n'
-                        self.remove_line(self._selected_indexs[ii])
+                        #self.remove_line(self._selected_indexs[ii])
                     cp_txt += self._md_lines[self._selected_indexs[len(self._selected_indexs) - 1]].md_text
-                    self.remove_line(self._selected_indexs[len(self._selected_indexs) - 1])  #TODO UNDO REMOVE_LINE
+                    # self.remove_line(self._selected_indexs[len(self._selected_indexs) - 1])  TODO UNDO REMOVE_LINE
+                    self.undo_manager.execute(_RemoveLinesCommand(self, self._selected_indexs))
                     Clipboard.copy(cp_txt)
                     return True
                 else:
                     return False
-            elif char == 'z' and 'ctrl' in special_keys:  # Ctrl + Z, Deshacer
+            elif not in_edition and char == 'z' and 'ctrl' in special_keys:  # Ctrl + Z, Deshacer
                 self.undo_manager.undo()
                 return True
-            elif char == 'y' and 'ctrl' in special_keys:  # Ctrl + Y, Rehacer
+            elif not in_edition and char == 'y' and 'ctrl' in special_keys:  # Ctrl + Y, Rehacer
                 self.undo_manager.redo()
                 return True
             elif keycode == 273 and 'shift' in special_keys and self._active_index != 0:  # Selecciona la linea de arriba
-                print('  Flecha Arriba con Shift (selecciona la linea de arriba)')
-                # Inhabilita el modo edicion
-                self.data[self._active_index]['mode_editor'] = False  # Inhabilita el modo edicion
-                self.data[self._active_index]['start_anim'] = False  # Desactiva la animacion
+                self.in_editing(False)  # Inhabilita el modo edicion
                 self._active_index -= 1  # Mueve el item activado
                 # Agrega o borra de la lista de seleccionados
                 if self._active_index in self._selected_indexs:  # Des-selecciona
-                    print('    Deselecciona')
                     self.unselect_index(self._active_index+1, anim=False)
                 else:
                     self.select_index(self._active_index, anim=False)
@@ -1156,13 +1155,10 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
                     if self.item_scroll_pos_y(item) + item.height > self.y + self.height:  # Mover el item a la base del RecycleView
                         self.scroll_y += item.height / (self.layout_manager.height - self.height)
             elif keycode == 274 and 'shift' in special_keys and self._active_index != len(self.data)-1:  # Selecciona la linea de abajo
-                print('  Flecha Abajo con Shift (selecciona la linea de abajo)')
-                self.data[self._active_index]['mode_editor'] = False  # Inhabilita el modo edicion
-                self.data[self._active_index]['start_anim'] = False  # Desactiva la animacion
+                self.in_editing(False)  # Inhabilita el modo edicion
                 self._active_index += 1  # Mueve el item activado
                 # Agrega o borra de la lista de seleccionados
                 if self._active_index in self._selected_indexs:  # Des-selecciona
-                    print('    Deselecciona')
                     self.unselect_index(self._active_index-1, anim=False)
                 else:
                     self.select_index(self._active_index, anim=False)
@@ -1174,7 +1170,6 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
                 # TODO: Verificar si esta presionado SHIFT o CTRL y seleccionar el rango
                 self.active_to_previus_item()
             elif keycode == 274 and self._active_index != len(self.data)-1:  # Flecha Abajo
-                print("    Flecha Abajo")
                 # TODO: Verificar si esta presionado SHIFT o CTRL y seleccionar el rango
                 self.active_to_next_item()
             if keycode == 275 and self._active_index != len(self.data)-1 and self._cursor[0] == len(md_editor.text):  # Flecha Derecha
@@ -1185,16 +1180,12 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
                 cur_x = len(self.data[self._active_index-1]['md_line'].md_text)
                 self.active_to_previus_item(cursor_pos=(cur_x, 0))
             elif keycode == 283:  # Tecla F2
-                self.in_editing(not(self._mode_editor))
-                # self._mode_editor =not(self._mode_editor)
-                # self.data[self._active_index] ['mode_editor'] = self._mode_editor
-                # self.data[self._active_index]['cursor'] = self._cursor
-                # self.data[self._active_index]['start_anim'] = False
-                # self.refresh_from_data()
-                return False
+                self._mode_editor = not(self._mode_editor)
+                self.in_editing(self._mode_editor)
+                
+                return True
             elif keycode == 27:  # Tecla Escape
-                self._mode_editor =False
-            # print(f'    cursor= {self._cursor}, {self.item_from_index(self._active_index).wg_line_editor.md_editor.cursor}')
+                self.in_editing(False)  # Desactiva el modo edicion
             elif keycode == 13 or keycode == 271:  # Tecla Enter o Intro
                 print('  Tecla Enter')
                 l_text = md_editor.text[0:self._cursor[0]]
@@ -1223,8 +1214,8 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
                 self.data[self._active_index]['cursor'] = (cur_pos, 0)  # Posiciona el cursor
                 self.remove_line(self._active_index+1)  # borra la linea de abajo
                 self.data[self._active_index+1]['md_line'].num_line = self.data[self._active_index]['md_line'].num_line + 1  # actualiza nro linea, prev y next
-            elif keycode == 127 and len(self._selected_indexs) > 0 and not in_edition:
-                self.undo_manager.execute(_RemoveLineCommand(self, self._selected_indexs))
+            elif keycode == 127 and len(self._selected_indexs) > 0 and not in_edition:  # Tecla Suprimir en modo no edicion
+                self.undo_manager.execute(_RemoveLinesCommand(self, self._selected_indexs))
                 # self.data[self._selected_indexs[len(self._selected_indexs)-1]]['selected'] = True
             elif keycode == 280:  # tecla page up
                 print('  Tecla PageUp')
@@ -1251,15 +1242,13 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
 
 
 # --- Funciones Undo  ---------------------------------------------------------------------------
-class _RemoveLineCommand(Command):
+class _RemoveLinesCommand(Command):
     def __init__(self, md_doc_editor:MDDocumentEditor, indexs:list):
-        # Los indices pueden no ser correlativos
+        # Los indices pueden no ser correlativos ???
         self.md_doc_editor = md_doc_editor
         self.indexs = indexs.copy()
         self.md_text = [md_doc_editor._md_lines[indice].md_text for indice in indexs]
         self.data = [md_doc_editor.data[indice] for indice in indexs]
-        # self.md_lines = md_lines[self.indexs[0]:self.indexs[-1]+1]
-        # self.data = data[self.indexs[0]:self.indexs[-1]+1]
 
     def execute(self):
         indexs = self.indexs[:]
@@ -1268,19 +1257,108 @@ class _RemoveLineCommand(Command):
                 if value_jj > value_ii:
                     indexs[jj] = value_jj - 1
             self.md_doc_editor.remove_line(value_ii)  # Remueve los items
-
-        self.md_doc_editor.unactivate()
-        self.md_doc_editor.activate_from_index(indexs[-1], anim=False)
-        self.md_doc_editor.in_editing(False)
+        self.md_doc_editor.unactivate()  # Des Activa el item actual
+        idx = self.indexs[-1] if self.indexs[-1] < len(self.md_doc_editor.data) else len(self.md_doc_editor.data)-1
+        self.md_doc_editor.activate_from_index(idx, anim=False)  # Activa el item nuevo
+        self.md_doc_editor.in_editing(False)  # Desactiva el modo edicion
 
     def undo(self):
-        self.md_doc_editor.in_editing(False)  # Desactiva el modo edicion
-        self.md_doc_editor.unactivate_from_index(self.md_doc_editor._active_index, anim=False)  # Desactiva el item actual
+        # self.md_doc_editor.in_editing(False)  # Desactiva el modo edicion
+        self.md_doc_editor.unactivate()  # Desactiva el item actual
         for ii, value_ii in enumerate(self.indexs):  # Re Inserta las lineas
-            self.md_doc_editor.insert_line(value_ii, self.md_text[ii])
+            if value_ii > len(self.md_doc_editor.data)-1:
+                self.md_doc_editor.append_line(self.md_text[ii])
+            else:  # Podria verificar tambien que sea > -1
+                self.md_doc_editor.insert_line(value_ii, self.md_text[ii])
+            
         self.md_doc_editor.select_indexs(self.indexs[:])  # Re Seleccion las lineas
         self.md_doc_editor.activate_from_index(value_ii, anim=False)  # Activa la ultima linea de la seleccion
         self.md_doc_editor.in_editing(False)
+        # self.md_doc_editor.refresh_from_data()
+
+
+class _InsertLinesCommand(Command):  # Es la inversa de Borrar.
+    # Probar con Ctrl + v
+    def __init__(self, md_doc_editor:MDDocumentEditor, index:int, md_text_list:list):
+        self.md_doc_editor = md_doc_editor
+        self.index = index  # Se asigna en la insercion para poder borrar en undo
+        self.md_text = md_text_list
+
+    def execute(self):
+        # self.md_doc_editor.in_editing(False)  # Desactiva el modo edicion
+        # self.md_doc_editor.unactivate_from_index(self.md_doc_editor._active_index, anim=False)  # Desactiva el item actual
+        # self.index = self.md_doc_editor._active_index RESTO TIENE QUE SER EN LA PRIMERA EJECUCION
+        self.md_doc_editor.unactivate()  # Des Activa el item actual
+        select = []
+        for ii in  range(len(self.md_text)):  # Re Inserta las lineas
+            index = self.index + ii + 1
+            self.md_doc_editor.insert_line(index, self.md_text[ii])
+            select.append(index)
+        self.md_doc_editor.select_indexs(select)  # Re Seleccion las lineas
+        self.md_doc_editor.activate_from_index(index, anim=False)  # Activa la ultima linea de la seleccion
+        self.md_doc_editor.in_editing(False)  # Desactiva el modo edicion
+        # self.md_doc_editor.refresh_from_data()
+
+    def undo(self):
+        for ii in range(len(self.md_text)):  # Ajusta los indices de los Items Seleccionados
+            self.md_doc_editor.remove_line(self.index + 1)  # Remueve los items
+        self.md_doc_editor.unactivate()  # Des Activa el item actual
+        self.md_doc_editor.activate_from_index(self.index + 1, anim=False)  # Activa el item nuevo
+        self.md_doc_editor.in_editing(False)  # Desactiva el modo edicion
+
+
+class _MoveLinesCommand(Command):
+    def __init__(self, md_doc_editor: MDDocumentEditor, actual_index: int, new_index: int):
+        self.md_doc_editor = md_doc_editor
+        self.actual_index = actual_index
+        self.new_index = new_index
+
+    def execute(self):
+        self.md_doc_editor.move_line_to(self.actual_index, self.new_index)
+
+    def undo(self):
+        self.md_doc_editor.move_line_to(self.new_index, self.actual_index)
+
+
+class _TextModifiedCommand(Command):
+    """Comando para modificar el texto de una linea en el editor de documentos Markdown.
+    Nota: Se llama siempre desde in_editing() cuando se cambia el texto de una linea"""
+    def __init__(self, md_doc_editor: MDDocumentEditor, index: int, old_text: str, new_text: str):
+        self.md_doc_editor = md_doc_editor
+        self.old_index = index
+        self.new_index = None
+        self.old_text = old_text
+        self.new_text = new_text
+
+    def execute(self):
+        self.md_doc_editor._md_lines[self.old_index].md_text = self.new_text
+        self.md_doc_editor.unactivate()
+        self.md_doc_editor.activate_from_index(self.new_index)
+        self.md_doc_editor.refresh_from_data()
+
+    def undo(self):
+        self.new_index = self.md_doc_editor._active_index
+        self.md_doc_editor._md_lines[self.old_index].md_text = self.old_text
+        self.md_doc_editor.unactivate()
+        self.md_doc_editor.activate_from_index(self.old_index)  # Activa la linea modificada
         self.md_doc_editor.refresh_from_data()
 
 
+class _EnterInEditionCommand(Command):
+    """Comando que se ejecuta cuando se presiona la tecla Enter o Intro en el editor de documentos Markdown."""
+    def __init__(self, md_doc_editor: MDDocumentEditor, index: int, text: str):
+        self.md_doc_editor = md_doc_editor
+        self.index = index
+        self.text = text
+
+    def execute(self):
+        self.md_doc_editor.insert_line(self.index + 1, self.text)
+        self.md_doc_editor.unactivate()
+        self.md_doc_editor.activate_from_index(self.index + 1)
+        self.md_doc_editor.refresh_from_data()
+
+    def undo(self):
+        self.md_doc_editor.remove_line(self.index + 1)
+        self.md_doc_editor.unactivate()
+        self.md_doc_editor.activate_from_index(self.index)
+        self.md_doc_editor.refresh_from_data()
