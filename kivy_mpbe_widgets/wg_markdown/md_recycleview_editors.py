@@ -793,9 +793,10 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
             
             self.in_editing(False, anim=anim)  # Desactiva el modo de edicion
             data_item['active'] = False
-            
-            self.refresh_from_data()
+            # data_item['mode_editor'] = False
+            # data_item['selected'] = False
             data_item['start_anim'] = False
+            self.refresh_from_data()
             self._active_index = -1
             UnActivateItemEventDispatcher.do_something(self, data_item, data_item['md_line'].num_line - 1)
 
@@ -1239,12 +1240,15 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
             # Backspace con cursor al inicio de linea, fusiona la linea con la linea de arriba
             elif keycode == 8 and self._active_index != 0 and self._cursor[0] == 0: # Tecla Backspace
                 print('  Tecla Backspace -> Fusiona la linea con la linea de arriba')
-                text = md_editor.text
-                print(f'    text: {text}')
-                self.remove_line(self._active_index)
-                cpos = len(self._md_lines[self._active_index-1].md_text)
-                self._md_lines[self._active_index -1].md_text += text
-                self.activate_from_index(self._active_index-1, cursor_pos=(cpos, 0))
+                
+                # text = md_editor.text
+                # print(f'    text: {text}')
+                # self.remove_line(self._active_index)
+                # cpos = len(self._md_lines[self._active_index-1].md_text)
+                # self._md_lines[self._active_index -1].md_text += text
+                # self.activate_from_index(self._active_index-1, cursor_pos=(cpos, 0))
+
+                self.undo_manager.execute(_BackspaceOnStartLineCommand(self))
             
             # Suprimir (Delete) con cursor al final de linea en modo edicion, fusiona la linea con la linea de abajo
             elif keycode == 127 and self._active_index != len(self.data)-1 and self._cursor[0] == len(md_editor.text) \
@@ -1450,3 +1454,43 @@ class _DeleteOnEndLineCommand(Command):
         self.md_doc_editor.unactivate()
         self.md_doc_editor.activate_from_index(self.index)
         self.md_doc_editor.refresh_from_data()
+
+
+class _BackspaceOnStartLineCommand(Command):
+    """Comando que se ejecuta cuando se presiona la tecla Backspace al inicio de una linea en el editor de documentos Markdown."""
+    def __init__(self, md_doc_editor: MDDocumentEditor):
+        self.md_doc_editor = md_doc_editor
+        self.index = self.md_doc_editor._active_index
+        self.text = self.md_doc_editor._md_lines[self.index].md_text[:]
+
+    def execute(self):
+        if self.index > 0:
+            prev_line = self.md_doc_editor._md_lines[self.index - 1]
+            cursor_pos = len(prev_line.md_text)
+            prev_line.md_text += self.text
+            prev_line.update_type()
+            self.md_doc_editor.remove_line(self.index)
+            self.md_doc_editor._md_lines[self.index - 1].num_line = prev_line.num_line
+            # if not self.md_doc_editor.in_editing:
+            self.md_doc_editor.unactivate()
+            self.md_doc_editor.activate_from_index(self.index - 1)
+            self._cursor = (cursor_pos, 0)  # Posiciona el cursor al final de la linea anterior
+            self.md_doc_editor.data[self.index - 1]['cursor'] = self._cursor  # Posiciona el cursor al final de la linea anterior
+            self.md_doc_editor.refresh_from_data()
+
+    def undo(self):
+        # Restaura el texto original de la línea que fue modificada.
+        original_line = self.md_doc_editor._md_lines[self.index - 1]
+        original_line.md_text = original_line.md_text[:-len(self.text)]
+        original_line.update_type()
+        # Vuelve a insertar la línea que fue eliminada.
+        # Gestiona el foco y refresca la vista.
+        self.md_doc_editor.unactivate()
+        self.md_doc_editor.activate_from_index(self.index - 1)
+        self.md_doc_editor.insert_line(self.index, self.text[:])
+        self._cursor = (0, 0)  # Posiciona el cursor al final de la linea anterior
+        self.md_doc_editor._md_lines[self.index].num_line = original_line.num_line + 1
+        self.md_doc_editor.data[self.index]['cursor'] = self._cursor  # Posiciona el cursor al final de la linea anterior
+        self.md_doc_editor.refresh_from_data()
+
+
