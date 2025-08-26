@@ -41,7 +41,7 @@ from kivy_mpbe_widgets.theming import Theme
 from kivy_mpbe_widgets.wg_buttons.click_buttons import ClickButton, ClickButtonLabel, ClickIcon
 from kivy_mpbe_widgets.wg_labels.font_icon_labels import FontIconLabel, FontIconWText
 from kivy_mpbe_widgets.wg_labels.image_labels import ImageWText
-from kivy_mpbe_widgets.wg_buttons.toggle_buttons import ToggleButton, ToggleButtonLabel
+from kivy_mpbe_widgets.wg_buttons.toggle_buttons import ToggleButton, ToggleButtonLabel, ToggleIcon
 
 
 class TestApp(App):
@@ -118,6 +118,18 @@ class TestApp(App):
 
         ci02 = ClickIcon(icon_name='apps', icon_size=64)
         grid.add_widget(ci02)
+
+        # -------------------------------------------------------------
+        # Toggle icons -------------------------------------------------
+        ly = AnchorLayout(anchor_x='center', anchor_y='center')
+        ti01 = ToggleIcon(icon_name='bluetooth', icon_size=54)
+        ti01.bind(on_toggle_state=self.on_toggle)
+        ly.add_widget(ti01)
+        grid.add_widget(ly)
+
+        ti02 = ToggleIcon(icon_name='wifi', icon_size=64, state='toggled')
+        ti02.bind(on_toggle_state=self.on_toggle)
+        grid.add_widget(ti02)
 
 
 

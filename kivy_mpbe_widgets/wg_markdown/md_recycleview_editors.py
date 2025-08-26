@@ -848,6 +848,23 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         self.activate_from_index(index, cursor_pos=cursor_pos, anim=True)
         return self.item_from_index(index)
 
+    def get_previus_data_title(self):
+        '''Devuelve el titulo anterior al indice indicado'''
+        index = self._active_index
+        if -1 < index < len(self.data):
+            for ii in range(index - 1, -1, -1):
+                if self.data[ii]['md_line'].type in (MD_LINE_TYPE.TITLE, MD_LINE_TYPE.HEAD_TITLE):
+                    return self.data[ii]
+        return None
+
+    def get_next_data_title(self):
+        '''Devuelve el siguiente titulo despues del indice indicado'''
+        index = self._active_index
+        if -1 < index < len(self.data):
+            for ii in range(index + 1, len(self.data)):
+                if self.data[ii]['md_line'].type in (MD_LINE_TYPE.TITLE, MD_LINE_TYPE.HEAD_TITLE):
+                    return self.data[ii]
+        return None
 
     ''' Funciones Edicion de Lineas --------------------------------------------'''
     def update_numlines(self):
@@ -1057,7 +1074,6 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
     # def _on_keyboard_down(self, window, keycode, modifier, char, special_keys):
     #     print("MDDocumentEditor->_on_keyboard_down Codigo de Teclas", keycode, modifier, char, special_keys)
 
-
     def _on_keyboard_up(self, window, keycode, modifier, char, special_keys):
         print("MDDocumentEditor._on_keyboard_up Codigo de Teclas", keycode, modifier, char, special_keys)
         # print(f'  default_h= {self.layout.default_height}, layout= {self.layout}')
@@ -1090,6 +1106,25 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
                 if ix_actual < len(self.data):
                     self.undo_manager.execute(_MoveLinesCommand(self, ix_actual, ix_new))
             
+            # Flecha arriba + Ctrl, mueve al Título anterior
+            elif keycode == 273 and 'ctrl' in special_keys:  # Flecha arriba + Ctrl, mueve al Título anterior
+                print('  Flecha Arriba con Ctrl (mueve al Título anterior)')
+                data = self.get_previus_data_title()
+                if data:
+                    self.unactivate()  # Desactiva el modo edicion
+                    self.activate_from_data(data, anim=True)  # Activa el item
+                    self.scroll_to_index(data['md_line'].num_line - 1)
+
+            # Flecha abajo + Ctrl, mueve al Siguiente Título
+            elif keycode == 274 and 'ctrl' in special_keys:  # Flecha abajo + Ctrl, mueve al Siguiente Título
+                print('  Flecha Abajo con Ctrl (mueve al Siguiente Título)')
+                data = self.get_next_data_title()
+                if data:
+                    self.unactivate()  # Desactiva el modo edicion
+                    self.activate_from_data(data, anim=True)  # Activa el item
+                    self.scroll_to_index(data['md_line'].num_line - 1)
+
+
             # Ctrl + C, Copiar linea/s seleccionada
             elif not in_edition and char == 'c' and 'ctrl' in special_keys:  # Ctrl + C, Copiar
                 # print(f'texto seleccionado: {md_editor.selection_text}')

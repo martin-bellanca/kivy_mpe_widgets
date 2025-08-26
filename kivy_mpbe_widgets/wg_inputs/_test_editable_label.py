@@ -44,7 +44,7 @@ from kivy.uix.label import Label as KVLabel
 # kivy_dkw ------------------------------------------------------------------
 from kivy_mpbe_widgets.theming import Theme
 from kivy_mpbe_widgets.wg_labels.text_labels import TextLabel as Label
-from kivy_mpbe_widgets.wg_inputs.inputs import EditableTextLabel as EDTL
+from kivy_mpbe_widgets.wg_inputs.inputs import EditableTextLabel as EDTL, InputFilter, InputSearch, InputSearchOrFilter
 
 class TestApp(App):
     theme = Theme(style='dark')
@@ -59,10 +59,32 @@ class TestApp(App):
         # right -------------------
         lbl = EDTL(text="Right Align", halign="right", valign="center", style="title", size_hint=(1, 1))
         bl.add_widget(lbl)
+        # center -------------------
+        inpfil = InputFilter()
+        bl.add_widget(inpfil)
+
+        # search -------------------
+        inpsearch = InputSearch()
+        inpsearch.bind(on_search=self.on_search_event)
+        bl.add_widget(inpsearch)
+
+        # search or filter -------------------
+        inpsearchorfilter = InputSearchOrFilter()
+        inpsearchorfilter.bind(on_search=self.on_search_event)
+        inpsearchorfilter.bind(filter_state=self.on_filter_state_change)
+        inpsearchorfilter.bind(parent_selection_state=self.on_parent_selection_state_change)
+        bl.add_widget(inpsearchorfilter)
 
         return bl
 
+    def on_search_event(self, instance, text):
+        print(f"Search triggered for text: '{text}' from {instance.__class__.__name__}")
 
+    def on_filter_state_change(self, instance, state):
+        print(f"Filter state changed to: '{state}' from {instance.__class__.__name__}")
+
+    def on_parent_selection_state_change(self, instance, state):
+        print(f"Parent selection state changed to: '{state}' from {instance.__class__.__name__}")
 
 
 if __name__ == "__main__":

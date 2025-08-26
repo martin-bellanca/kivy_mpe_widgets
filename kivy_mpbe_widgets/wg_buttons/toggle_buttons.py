@@ -148,3 +148,93 @@ class ToggleButtonLabel(FrameFocused, ToggleEventDispatcher):
     def on_toggle_state(self, state, *args):
         # print('ToggleButtonLabel.on_activate')
         self._label.lbl_activate(state)
+
+
+class ToggleIcon(IconBehavior, ThemeWidget, ToggleEventDispatcher):
+    """Boton conmutador formado por un icono
+    icon_family: str - Nombre del fuente de iconos
+    icon_name: str - Nombre del icono
+    icon_size: int - Tamaño del icono
+    """
+    level_render = OptionProperty('low', options=['low', 'medium', 'high'])
+    state = OptionProperty('untoggled', options=['toggled', 'untoggled'])
+
+    def __init__(self, icon_name, icon_size=28, icon_family='materialdesignicons-webfont', **kwargs):
+        '''
+        Constructor class.
+        Parameters:
+        Keyword arguments:
+            icon_name:
+            icon_size:
+            icon_family:
+        '''
+        IconBehavior.__init__(self, icon_name, icon_size, icon_family, **kwargs)
+        ThemeWidget.__init__(self, container=self._icon)
+        ToggleEventDispatcher.__init__(self)
+        self.size_hint_x = None
+        if self.size_hint_x is None:
+            self.width = self.icon_size
+        if self.size_hint_y is None:
+            self.height = self.icon_size
+        self._icon.valign = 'center'
+        self._icon.halign = 'center'
+        self._hotlight_active = False
+        if kivy_mpbe_widgets.DEVICE_TYPE == 'desktop':
+            Window.bind(mouse_pos=self.on_mouse_move)
+
+        self.bind(state=self.on_state_change)
+        self.on_state_change(self, self.state)
+
+    def on_state_change(self, instance, value):
+        self.update_hotlight_geometry()
+
+    def update_hotlight_geometry(self):
+        if self.state == 'toggled':
+            co = self.theme.colors['pressed_face']
+        elif self._hotlight_active:
+            co = self.theme.colors['hotlight_border']
+        else:
+            co = self.theme.colors['icons']
+
+        co[3] = 1.0
+        anim = Animation(icon_color=co, duration=0.2)
+        anim.start(self)
+
+    def on_mouse_move(self, instance, mp):
+        hla = self.collide_point_to_window(*mp)
+        if self._hotlight_active != hla:
+            self._hotlight_active = hla
+            self.update_hotlight_geometry()
+
+    def on_touch_down(self, touch):
+        print(f"ClickIcon.on_touch_down")
+        ltouch = self.to_local(*touch.pos)
+        wtouch = self.to_widget(*touch.pos)
+        cpl = self.collide_point(*ltouch)
+        cpw = self.collide_point(*wtouch)
+        print(f"  collide: {cpl} - {cpw}")
+        if touch.button == 'left' and (cpl or cpw) and not self.disabled and self.level_render == self.theme.level_render:
+            touch.grab(self)
+            return True
+
+    def on_touch_up(self, touch):
+        if touch.grab_state:
+            touch.ungrab(self)
+            if self.collide_point(*self.to_local(*touch.pos)):
+                self.state = 'toggled' if self.state == 'untoggled' else 'untoggled'
+                if self.state == 'toggled':
+                    cop = self.theme.colors['pressed_face']
+                    cop[3] = 1.0
+                    iz = self.icon_size - 2
+                    anim = Animation(icon_color=cop, icon_size=iz, duration=0.2)
+                    anim.start(self)
+                else:
+                    coh = self.theme.colors['hotlight_border']
+                    iz = self.icon_size + 2
+                    anim = Animation(duration=0.4)
+                    anim += Animation(icon_color=coh, icon_size=iz, duration=0.2)
+                    anim.start(self)
+
+                ToggleEventDispatcher.do_something(self, self.state)
+                return True
+        return False
