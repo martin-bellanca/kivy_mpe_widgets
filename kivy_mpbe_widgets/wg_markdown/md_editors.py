@@ -51,11 +51,11 @@ import kivy_mpbe_widgets
 from kivy_mpbe_widgets.theming import ThemableBehavior
 from kivy_mpbe_widgets.base_widgets import FrameUnfocused, FrameFocused
 from kivy_mpbe_widgets.wg_markdown.md_doc_line_widgets import *
-from kivy_mpbe_widgets.wg_markdown.md_document import MDDocument
+from helpers_mpbe.markdown_document.md_document import MDDocument
 from kivy_mpbe_widgets.wg_markdown import MD_LINE_TYPE
 from kivy_mpbe_widgets.wg_markdown.md_labels import MDTextLabel, MDTableLabel, MDSeparatorLabel
 from kivy_mpbe_widgets.wg_markdown.md_labels import BaseMDLabel, MDCodeLabel, MDHeadLabel, MDToDoLabel, MDTaskLabel, MDImageLabel
-from kivy_mpbe_widgets.wg_markdown.md_document import MDLine
+from helpers_mpbe.markdown_document.md_document import MDLine
 # from kivy_dkw.wg_markdown.render_markdown_to_widgets import render_line_markdown_to_widget
 
 # Define el archivo KV en un string

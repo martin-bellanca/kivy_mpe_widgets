@@ -46,16 +46,17 @@ from kivy.uix.scrollview import ScrollView
 from kivy.properties import BooleanProperty, StringProperty, OptionProperty, ObjectProperty, NumericProperty
 from kivy.clock import Clock
 
-# kivy_dkw ------------------------------------------------------------------
+# kivy_mpbe_widgets ----------------------------------------------------------
 import kivy_mpbe_widgets
 from kivy_mpbe_widgets.theming import ThemableBehavior
 from kivy_mpbe_widgets.base_widgets import FrameUnfocused, FrameFocused
-from kivy_mpbe_widgets.wg_markdown.md_document import MDDocument
-from kivy_mpbe_widgets.wg_markdown import MD_LINE_TYPE
+from helpers_mpbe.markdown_document.md_document import MDDocument
+from helpers_mpbe.markdown_document import MD_LINE_TYPE
 from kivy_mpbe_widgets.wg_markdown.md_inputs import MDLineTextInput
-from kivy_mpbe_widgets.wg_markdown.md_labels import MDTextLabel, MDTableLabel, MDSeparatorLabel
-from kivy_mpbe_widgets.wg_markdown.md_labels import BaseMDLabel, MDCodeLabel, MDHeadLabel, MDToDoLabel, MDTaskLabel, MDImageLabel
-from kivy_mpbe_widgets.wg_markdown.md_document import MDLine
+# helpers_mpbe --------------------------------------------------------------
+from helpers_mpbe.markdown_document.md_document import MDLine
+from helpers_mpbe.markdown_document.md_labels import MDTextLabel, MDTableLabel, MDSeparatorLabel
+from helpers_mpbe.markdown_document.md_labels import BaseMDLabel, MDCodeLabel, MDHeadLabel, MDToDoLabel, MDTaskLabel, MDImageLabel
 # from kivy_dkw.wg_markdown.render_markdown_to_widgets import render_line_markdown_to_widget
 
 # Define el archivo KV en un string

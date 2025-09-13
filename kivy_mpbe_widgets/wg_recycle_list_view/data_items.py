@@ -97,10 +97,10 @@ Builder.load_string('''
 # ------------------------------------------------------------------------------------------------------------------
 class BaseDataDic:
     '''Clase para definir el diccionario para el Recycle List View'''
-    def __init__(self, id=None, selected=False, start_anim=False, state_background=False):
+    def __init__(self, index=None, selected=False, start_anim=False, state_background=False):
         self._state_background = state_background
-        # self.index = index
-        self.l_id = id
+        self.index = index
+        # self.l_id = id
         self.selected = selected  # puede ser 'select, to_select, unselect, to_unselect' los 'to_' se animados
         self.start_anim = start_anim  # indica si se anima la seleccion o des-seleccion, false no anima, true o coordenadas de inicio anima
 
@@ -108,11 +108,11 @@ class BaseDataDic:
         """
         Devuelve el diccionario de MDDocumentEditor
         Dict Parameters:
-            id (int): nro. de linea.
+            index (int): Indica la posicion del item en la lista.
             selected (bool): Indica si el item esta seleccionado.
             state_background (bool): Indica si se sombrea el fondo. Es para el pintado intercalado.
         """
-        return {'l_id': self.l_id, 'selected':self.selected, 'start_anim':self.start_anim,
+        return {'index': self.index, 'selected':self.selected, 'start_anim':self.start_anim,
                 'state_background':self._state_background}
 
 
@@ -249,7 +249,7 @@ class BaseItem(RecycleDataViewBehavior, ThemeWidget, HotlightEventDispatcher):
         RecycleDataViewBehavior.__init__(self)
         ThemeWidget.__init__(self)
         HotlightEventDispatcher.__init__(self)
-        self.index = -1  # indice actual
+        self.index = -1  # indice actual del item en el RecycleView
         self.in_edition = False  # Define si el item esta en modo edicion
         self._touch_pos = (0,0)
         self._state_background = None
@@ -265,7 +265,7 @@ class BaseItem(RecycleDataViewBehavior, ThemeWidget, HotlightEventDispatcher):
         return self._selected
     selected = property(get_selected)
 
-    # Funciones UI ------------------------------------------------------
+    # Funciones UI ----------------------------------------------------------------------
     def select_item(self, rv, data):
         # print('BaseItem.select ffff-------------------')
         rv.focus =True
@@ -283,9 +283,6 @@ class BaseItem(RecycleDataViewBehavior, ThemeWidget, HotlightEventDispatcher):
         data['selected'] = False
         pass
 
-
-
-
     def start_editing(self, rv, data):
         pass
 
@@ -295,41 +292,38 @@ class BaseItem(RecycleDataViewBehavior, ThemeWidget, HotlightEventDispatcher):
     def _hotlight_event(self, state, mouse_pos):
         HotlightEventDispatcher.do_something(self, state, mouse_pos)
 
-    # Funciones de RecycleDataViewBehavior -------------------------------------
+    # Funciones de RecycleDataViewBehavior ----------------------------------------------
     def refresh_view_attrs(self, rv, index, data):
         '''
         Catch and handle the view changes - se ejecuta cuando hay un cambio en data
         **Parameters:**
             rv (RecycleView): Clase derivada de RecycleView
-            index (int): Indice del item
+            index (int): Indice del item en el RecycleView
             data (dictionary): Diccionario con la informacion del item
                 **Keys:**
                 'selected' (bool): Define si el item esta seleccionado
         '''
         # print(f'BaseItem.refresh_view_attrs uid={rv.uid} - item={index}')
+        # Actualiza el indice del item --------------------------------------------------
         self.index = index
-        # Establece el fondo -------------------------------
+        data['index'] = index
+        # Establece el fondo ------------------------------------------------------------
         if rv.activate_background:
             self._state_background = True if index % 2 == 0.0 else False  # Par / Impar
             self.apply_background(self._state_background)
-        # # Define la altura ---------------------------------
-        # if 'height' in data:
-        #     self.height = data['height']  # Cambia la altura si está definida en los datos
-        # Establece el estado de seleccion -----------------
-
-        # if self._selected != data['selected']:
-        # self._selected = data['selected']
+        # # Define la altura ------------------------------------------------------------
+        if 'height' in data:
+            self.height = data['height']  # Cambia la altura si está definida en los datos
+        # Controla si se debe animar la seleccion ---------------------------------------
         if data['start_anim'] == True:
             pos_ini = (self.x+10, self.y+self.height/2)
         elif isinstance(data['start_anim'], tuple):
             pos_ini = data['start_anim']
         else:
             pos_ini = False
-
+        # Establece el estado de seleccion y ejecuta la animacion de seleccion ----------
         if data['selected'] != self._selected:
             self._selected = data['selected']
-
-
             if self._selected:  # select
                 if pos_ini:
                     self.graphic_select.animate_select(True, pos_ini)

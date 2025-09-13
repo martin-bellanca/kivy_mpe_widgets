@@ -38,7 +38,7 @@ from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 # Kivy_dkw imports -------------------------------------------------------------
 from kivy_mpbe_widgets.theming import Theme
-from kivy_mpbe_widgets.wg_markdown.markdown_extension import TaskListMDExtension
+from helpers_mpbe.markdown_document.markdown_extension import TaskListMDExtension
 from kivy_mpbe_widgets.wg_markdown.md_labels_viejo import MarkdownLabel
 from kivy_mpbe_widgets.wg_markdown.md_labels import MDTextLabel
 from kivy_mpbe_widgets.wg_markdown.md_editors import MDLineTextInput

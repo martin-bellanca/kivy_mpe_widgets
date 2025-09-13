@@ -50,12 +50,11 @@ from kivy.clock import Clock
 import kivy_mpbe_widgets
 from kivy_mpbe_widgets.theming import ThemableBehavior
 from kivy_mpbe_widgets.base_widgets import FrameUnfocused, FrameFocused
-from kivy_mpbe_widgets.wg_markdown.md_document import MDDocument
-from kivy_mpbe_widgets.wg_markdown import MD_LINE_TYPE
-from kivy_mpbe_widgets.wg_markdown.md_labels import MDTextLabel, MDTableLabel, MDSeparatorLabel
-from kivy_mpbe_widgets.wg_markdown.md_labels import BaseMDLabel, MDCodeLabel, MDHeadLabel, MDToDoLabel, MDTaskLabel, \
-    MDImageLabel
-from kivy_mpbe_widgets.wg_markdown.md_document import MDLine
+from helpers_mpbe.markdown_document.md_document import MDDocument
+from helpers_mpbe.markdown_document import MD_LINE_TYPE
+from helpers_mpbe.markdown_document.md_document import MDLine
+from helpers_mpbe.markdown_document.md_labels import BaseMDLabel, MDTextLabel, MDTableLabel, MDSeparatorLabel
+from helpers_mpbe.markdown_document.md_labels import MDCodeLabel, MDHeadLabel, MDToDoLabel, MDTaskLabel, MDImageLabel
 
 # from kivy_dkw.wg_markdown.render_markdown_to_widgets import render_line_markdown_to_widget
 

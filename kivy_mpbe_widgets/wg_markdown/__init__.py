@@ -27,61 +27,61 @@ Created on 12/09/2024
 Note: Widgets the markdown package
 """
 
-# imports del sistema -------------------------------------------------------
-from enum import Enum
+# # imports del sistema -------------------------------------------------------
+# from enum import Enum
 
-class MD_LINE_TYPE(Enum):
-    TEXT = 0
-    TITLE = 1
-    HEAD_TITLE = 2
-    UNDERLINE_TITLE = 3
-    SEPARATOR = 4
-    LIST = 5
-    ORDER_LIST = 6
-    TASK = 7
-    TODO = 8
-    TABLE = 9
-    BLOCKQUOTE = 10
-    IMAGEN = 11
-    CODE = 12
-    START_CODE = 13
-    END_CODE = 14
+# class MD_LINE_TYPE(Enum):
+#     TEXT = 0
+#     TITLE = 1
+#     HEAD_TITLE = 2
+#     UNDERLINE_TITLE = 3
+#     SEPARATOR = 4
+#     LIST = 5
+#     ORDER_LIST = 6
+#     TASK = 7
+#     TODO = 8
+#     TABLE = 9
+#     BLOCKQUOTE = 10
+#     IMAGEN = 11
+#     CODE = 12
+#     START_CODE = 13
+#     END_CODE = 14
 
-    # Expresiones regulares para detectar diferentes tipos de párrafos
-class TYPE_PATTERNS ():
-    table = r'^\|.*\|$'  # Para detectar cualquier fila de una tabla
-    list = r'^\s*- [^\[].*'  # Para listas regulares  ^\s*[-*+]\s+.*
-    ordered_list = r'^\d{1,2}\.\s.+$'  # Para listas numeradas
-    task = r'^\s*-\s\[[x\s]\].*'  # Para listas de tareas (checkbox)  ^\s*[-*+] \[.\]\s+.*
-    todo = r'^\s*-\[[xo>\-\s].*'  # Para tareas tipo ToDo    ^\s*-\[\s\]\s+.*
-    title = r'^#{1,6}\s+.*$'  # Para títulos con #
-    underlined_title = r'^===[=\s]*$'  # Para títulos subrayados con ===   ^.*\n=+$
-    separator = r'^---[-\s]*$'  # Para separador horizontal (linea horizontal)
-    image = r'^!\[.*?\]\(.*?\)$'  # Imagen
+#     # Expresiones regulares para detectar diferentes tipos de párrafos
+# class TYPE_PATTERNS ():
+#     table = r'^\|.*\|$'  # Para detectar cualquier fila de una tabla
+#     list = r'^\s*- [^\[].*'  # Para listas regulares  ^\s*[-*+]\s+.*
+#     ordered_list = r'^\d{1,2}\.\s.+$'  # Para listas numeradas
+#     task = r'^\s*-\s\[[x\s]\].*'  # Para listas de tareas (checkbox)  ^\s*[-*+] \[.\]\s+.*
+#     todo = r'^\s*-\[[xo>\-\s].*'  # Para tareas tipo ToDo    ^\s*-\[\s\]\s+.*
+#     title = r'^#{1,6}\s+.*$'  # Para títulos con #
+#     underlined_title = r'^===[=\s]*$'  # Para títulos subrayados con ===   ^.*\n=+$
+#     separator = r'^---[-\s]*$'  # Para separador horizontal (linea horizontal)
+#     image = r'^!\[.*?\]\(.*?\)$'  # Imagen
 
-    def get_mu_widget(self):
-        return (MDTextLabel,  # TEXT
-                MDTextLabel,  # TITLE
-                MDTextLabel,  # HEAD_TITLE      MDHeadLabel
-                MDSeparatorLabel,  # UNDERLINE_TITLE
-                MDSeparatorLabel,  # SEPARATOR
-                MDTextLabel,  # LIST
-                MDTextLabel,  # ORDER_LIST
-                MDTaskLabel,  # TASK            MDTaskLabel
-                MDToDoLabel,  # TODO            MDToDoLabel
-                MDTableLabel,  # TABLE
-                MDBlockQuoteLabel,  # BLOCKQUOTE      MDBlockQuoteLabel
-                MDImagenLabel,  # IMAGEN          MDImageLabel
-                MDCodeLabel,  # CODE            MDCodeLabel
-                MDCodeLabel,  # START_CODE      MDCodeLabel
-                MDCodeLabel,  # END_CODE        MDCodeLabel
-                )[self.value]
+#     def get_mu_widget(self):
+#         return (MDTextLabel,  # TEXT
+#                 MDTextLabel,  # TITLE
+#                 MDTextLabel,  # HEAD_TITLE      MDHeadLabel
+#                 MDSeparatorLabel,  # UNDERLINE_TITLE
+#                 MDSeparatorLabel,  # SEPARATOR
+#                 MDTextLabel,  # LIST
+#                 MDTextLabel,  # ORDER_LIST
+#                 MDTaskLabel,  # TASK            MDTaskLabel
+#                 MDToDoLabel,  # TODO            MDToDoLabel
+#                 MDTableLabel,  # TABLE
+#                 MDBlockQuoteLabel,  # BLOCKQUOTE      MDBlockQuoteLabel
+#                 MDImagenLabel,  # IMAGEN          MDImageLabel
+#                 MDCodeLabel,  # CODE            MDCodeLabel
+#                 MDCodeLabel,  # START_CODE      MDCodeLabel
+#                 MDCodeLabel,  # END_CODE        MDCodeLabel
+#                 )[self.value]
 
 
-    @classmethod
-    def get_name_list(cls):
-        return [member.name for member in cls]
+#     @classmethod
+#     def get_name_list(cls):
+#         return [member.name for member in cls]
 
-    @classmethod
-    def get_value_list(cls):
-        return [member.value for member in cls]
+#     @classmethod
+#     def get_value_list(cls):
+#         return [member.value for member in cls]

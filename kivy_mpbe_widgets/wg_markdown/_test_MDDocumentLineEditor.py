@@ -39,7 +39,7 @@ from kivy.uix.textinput import TextInput
 # Kivy_dkw imports -------------------------------------------------------------
 from kivy_mpbe_widgets.theming import Theme
 from kivy_mpbe_widgets.wg_markdown import MD_LINE_TYPE
-from kivy_mpbe_widgets.wg_markdown.md_document import MDLine
+from helpers_mpbe.markdown_document.md_document import MDLine
 from kivy_mpbe_widgets.wg_markdown.md_editors import MDDocumentLineEditor
 from kivy_mpbe_widgets.wg_buttons.click_buttons import ClickButton
 
