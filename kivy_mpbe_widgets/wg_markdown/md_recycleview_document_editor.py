@@ -97,7 +97,29 @@ class SelectableRecycleBoxLayout(LayoutSelectionBehavior, RecycleBoxLayout):  # 
 class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
                        ActivateItemEventDispatcher, UnActivateItemEventDispatcher,
                        SelectItemEventDispatcher, UnSelectItemEventDispatcher):
+    """Clase que implementa un editor de documentos markdown basado en RecycleView
+    Nota: 
+        - Solo puede haber un MDDocumentEditor con foco a la vez.
+        - El indice 'Index' de la lista self.data se refiere al indice del item en el data del RecycleView.
+        - El indice de la data_items que es la lista completa sobre la que se aplican los filtros se corresmonde con el
+            nro de linea de mdline.
+        - 'Item' se refiere al widget que representa el item en el layout del RecycleView.
+        - 'Data Item' se refiere al diccionario que representa el item en el data del RecycleView.
+
+    Args:
+        FocusBehavior (_type_): _description_
+        ThemableBehavior (_type_): _description_
+        RecycleView (_type_): _description_
+        ActivateItemEventDispatcher (_type_): _description_
+        UnActivateItemEventDispatcher (_type_): _description_
+        SelectItemEventDispatcher (_type_): _description_
+        UnSelectItemEventDispatcher (_type_): _description_
+    """
     instance_focus = None
+    filter = BooleanProperty(False)
+    filter_txt = StringProperty('')
+    filter_up = BooleanProperty(False)
+    search = BooleanProperty(False)
 
     def __init__(self, activate_background=True, **kwargs):
         FocusBehavior.__init__(self)
@@ -111,6 +133,10 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         UnSelectItemEventDispatcher.__init__(self)
 
         # self.focused = True
+        # self.filter = False
+        # self.filter_txt = None
+        # self.filter_up = False
+        # self.search = False
         self.initialize_document()
         # self._select_unselect = sel_unsel  # Define si al hacer click sobre un item seleccionado este se des selecciona
         # self.multiselect = mutilselect  # Permite la multiseleccion de items
@@ -127,6 +153,7 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
 
     def initialize_document(self):
         'Inicializa el documento'
+        self.data_items = dict()  # Clase sobre la que se ejecutan los cambios para luego copiar al data del RecycleView. Para implementar filtros.
         self.undo_manager.clear_stack()
         self._md_lines = None
         self._item_hotlight = None
@@ -140,17 +167,46 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         # self.layout_height = 0
 
     ''' Funciones de la Interfaz -------------------------------'''
+    def apply_data_items(self):
+        if self.filter:
+            if self.filter_txt.strip() != '':
+                if self.filter_up:
+                    # Incliye en el filtro las lineas padre de las que cumplen el filtro
+                    pass
+                else:
+                    # Aplica el filtro solo a las lineas que coinciden con el filtro
+                    self.data = [di for di in self.data_items if self.filter_txt in di['md_line'].md_text]
+            else:
+                self.data = self.data_items.copy()
+        else:
+            # copia la lista completa
+            self.data = self.data_items.copy()
+
     def populate_from_md_lines(self, md_lines):
         self.initialize_document()
         self._md_lines = md_lines
-        self.data = []
+        self.data_items = []
         for id, mdl in enumerate(md_lines, start=1):
             data_line = DocLineDataDic(id=None, md_line=mdl)  # no uso el id del data. Uso md_line.num_line que se auto-actualiza
             dic_line = data_line.to_dict()
-            self.data.append(dic_line)
-        pass
-        # self.doc_editor.refresh_from_data()
-        # self.update_layout_height()  NO ANDA
+            self.data_items.append(dic_line)
+        self.apply_data_items()
+
+    def on_filter(self, instance, value):
+        self.filter = value
+        self.apply_data_items()
+    
+    def on_filter_txt(self, instance, value):
+        self.filter_txt = value
+        self.apply_data_items()
+
+    def on_filter_up(self, instance, value):
+        self.filter_up = value
+        self.apply_data_items()
+
+    def on_search(self, instance, value):
+        self.search = value
+        self.apply_data_items()
 
     def on_hotlight_item(self, item, state):
         if state:
@@ -166,63 +222,12 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
             MDDocumentEditor.instance_focus = instance
         return True
 
-    # def update_layout_height(self):
-    #     # bk_sc = self.scroll_y
-    #     # self.scroll_y = 1
-    #     # # self.activate_from_index(0)
-    #     # self.layout_height = self.layout_manager.height
-    #     # self.scroll_y = bk_sc
-    #
-    #     self.layout_height = 0
-    #     for ditem in self.data:
-    #         widget = self.viewclass()
-    #         widget.refresh_view_attrs(self, ditem['l_id']-1, ditem)
-    #         # widget.wg_line_editor.height
-    #
-    #         widget.wg_line_editor.update_type()
-    #         widget.wg_line_editor._update_height()
-    #
-    #         widget.wg_line_editor.active_label.texture_update()
-    #         print(f'wg_h= {widget.wg_line_editor.active_label.texture_size}')
-    #         altura = widget.wg_line_editor.texture_size[1] + widget._layout.padding[0] + self.layout_manager.spacing
-    #         self.layout_height += altura
-
-
     '''Funciones generales de data y item ---------------------------------------'''
-    # def scroll_to_item(self, item, position='center'):  NO ANDA POR QUE ly_height ESTA MAL Y NO HAY FORMA FACIL DE CALCULARLO
-    #     ''' Scrolls the RecycleView to bring the item at 'index' into view.
-    #         'position' can be 'top', 'center', or 'bottom'.
-    #     '''
-    #     # index = item.index
-    #     # layout = self.layout_manager
-    #
-    #     # if not layout or index is None or not (0 <= index < len(self.data)):
-    #     #     return
-    #
-    #     # item_pos = self.item_scroll_pos_y(item)
-    #
-    #     layout = self.layout_manager
-    #     ly_height = layout.height
-    #     rv_height = self.height
-    #     delta_1 = ly_height - rv_height
-    #     delta_it = self.y - self.item_scroll_pos_y(item)   # self.y = 0
-    #
-    #     # RecycleBoxLayout.default_height
-    #
-    #     if position == 'bottom':
-    #         new_scroll = 1 - delta_it / delta_1
-    #         self.scroll_y = new_scroll
-    #
-    #     print('MDDocument.scroll_to_item()')
-    #     print(f'  ly_h= {ly_height}, rv_h= {rv_height}')
-    #     print(f'  item.y= {item.y}')
-    #     print(f'  item.y= {self.item_scroll_pos_y(item)}, View y= {self.y}')
-    #     print(f'  delta_1= {delta_1}, delta_it= {delta_it}')
-    #     print(f'  new_scroll= {new_scroll}')
-
+    # OK data item
     def index_from_data(self, data):  # EX data_index
-        return self.data.index(data)
+        return self.data_items.index(data)
 
+    # OK data item
     def item_from_index(self, index, auto_scroll=True):
         item = None
         for it in self.layout.children:
@@ -231,6 +236,7 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
                 break
         return item
 
+    # OK data item
     def active_md_editor(self):
         item = self.item_from_index(self._active_index)
         if item:
@@ -238,10 +244,10 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         else:
             None
 
+    # OK data item
     def update_data_index(self, start_index):
         for ii in range(start_index, len(self.data)):
-            self.data[ii]['index'] = ii
-
+            self.data_items[ii]['index'] = ii
 
     '''Funciones sobre cursor line -------------------------------------------------------'''
     def scroll_to_index(self, index):
@@ -270,7 +276,7 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         self.select_data_item(self.data[item.index], anim)
 
     def select_index(self, index, anim=False):  # TODO: cambiar a select_from_index
-        self.select_data_item(self.data[index], anim)
+        self.select_data_item(self.data_items[index], anim)
 
     def select_data_item(self, data_item, anim=False):  # TODO: cambiar a select_from_data
         '''
@@ -278,14 +284,13 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         anim puede ser True, False o una tupla que indica la pos de inicio de la animacion
         '''
         # print(f"MDDocumentEditor.select_data_item(data_item: {data_item})")
+        # Marca el item como seleccionado
         data_item['selected'] = True
         data_item['start_anim'] = anim
-
-
+        self.data_items[data_item['index']]['selected'] = True
+        # Agrega el item al listado de seleccion
         self._selected_indexs.append(data_item['index'])
-
-        # print(f'  Lista de Seleccionados{self._selected_indexs}')
-
+        # Actualiza el View
         self.refresh_from_data()
         SelectItemEventDispatcher.do_something(self, data_item, data_item['index'])
 
@@ -447,8 +452,8 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         index = self._active_index
         if -1 < index < len(self.data):
             for ii in range(index - 1, -1, -1):
-                if self.data[ii]['md_line'].type in (MD_LINE_TYPE.TITLE, MD_LINE_TYPE.HEAD_TITLE):
-                    return self.data[ii]
+                if self.data_items[ii]['md_line'].type in (MD_LINE_TYPE.TITLE, MD_LINE_TYPE.HEAD_TITLE):
+                    return self.data_items[ii]
         return None
 
     def get_next_data_title(self):
@@ -456,22 +461,26 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         index = self._active_index
         if -1 < index < len(self.data):
             for ii in range(index + 1, len(self.data)):
-                if self.data[ii]['md_line'].type in (MD_LINE_TYPE.TITLE, MD_LINE_TYPE.HEAD_TITLE):
+                if self.data_items[ii]['md_line'].type in (MD_LINE_TYPE.TITLE, MD_LINE_TYPE.HEAD_TITLE):
                     return self.data[ii]
         return None
 
+
+   # SEGUIR DE ACA. CAMBIAR A data_items Y LUEGO COPIAR A DATA
+
     ''' Funciones Edicion de Lineas --------------------------------------------'''
-    def update_numlines(self):
+    def update_numlines(self):  # No Hace Falta. Probar sacar
         for ii, line in enumerate(self._md_lines):
             line.num_line = ii + 1
 
-    def move_line_to(self, actual_index, new_index):
+    # Actualizado a data_items
+    def move_line_to(self, actual_index, new_index):  # Hay que ver que pass con actual y new index por que apuntan al data creo
         '''Mueve la linea de la posicion actual_index a la poscicion new_index'''
         # print('MDDocumentEditor.move_line_to()')
         if new_index > actual_index:  # Mueve hacia arriba
             # print('  Mueve hacia arriba')
             self._md_lines.insert(new_index, self._md_lines.pop(actual_index))  # Mueve MDLine
-            self.data.insert(new_index, self.data.pop(actual_index))  # Mueve el data
+            self.data_items.insert(new_index, self.data_items.pop(actual_index))  # Mueve el data
             # Ajusta la lista de los indices seleccionados
             for ii in range(len(self._selected_indexs)):
                 self._selected_indexs[ii] -= 1
@@ -493,15 +502,17 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
             self._md_lines[actual_index].num_line = nl
             # Actualiza el Active Index
             self._active_index -= 1
-            # Actualiza el View
+            # Ajusta el scroll para que el item este visible
             item = self.item_from_index(actual_index)
             if self.item_scroll_pos_y(item) + item.height > self.y + self.height:  # Mover el item a la base del RecycleView
                 self.scroll_y += item.height / (self.layout_manager.height - self.height)
+            # Actualiza el View
+            self.apply_data_items()
             self.refresh_from_data()
         elif new_index < actual_index:  # Mueve hacia abajo
             # print('  Mueve hacia abajo')
             self._md_lines.insert(new_index, self._md_lines.pop(actual_index))  # Mueve MDLine
-            self.data.insert(new_index, self.data.pop(actual_index))  # Mueve el data
+            self.data_items.insert(new_index, self.data_items.pop(actual_index))  # Mueve el data
             # Ajusta la lista de los indices seleccionados
             for ii in range(len(self._selected_indexs)):
                 self._selected_indexs[ii] += 1
@@ -523,12 +534,15 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
             self._md_lines[new_index].num_line = self._md_lines[new_index - 1].num_line + 1
             # Actualiza el Active Index
             self._active_index += 1
-            # Actualiza el View
+            # Ajusta el scroll para que el item este visible
             item = self.item_from_index(actual_index)
             if self.item_scroll_pos_y(item) < 0:  # Mover el item a la base del RecycleView
                 self.scroll_y -= item.height / (self.layout_manager.height - self.height)
+            # Actualiza el View
+            self.apply_data_items()
             self.refresh_from_data()
 
+    # Actualizado a data_items
     def append_line(self, md_text):
         '''Agrega una linea'''
         index = len(self._md_lines)-1
@@ -541,7 +555,7 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         # Data
         data_line = DocLineDataDic(index, md_line)
         dic_line = data_line.to_dict()
-        self.data.append(dic_line)
+        self.data_items.append(dic_line)
         # Actualiza el View
         self.refresh_from_data()
         return md_line
@@ -565,9 +579,10 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
             # Inserta en data ---------------------------------------
             data_line = DocLineDataDic(index+1, md_line)
             dic_data_line = data_line.to_dict()
-            self.data.insert(index, dic_data_line)
+            self.data_items.insert(index, dic_data_line)
             self.update_data_index(index)
             # Refresca el View --------------------------------------
+            self.apply_data_items()
             self.refresh_from_data()
             return md_line
         else:
@@ -590,22 +605,24 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
                 self._md_lines[index].prev_line = None
             self._md_lines[index].num_line = index + 1
         # Borra en el data
-        del(self.data[index])
+        del(self.data_items[index])
         self.update_data_index(index)
         # Refresca el View
+        self.apply_data_items()
         self.refresh_from_data()
-        pass
 
     def in_editing(self, value:bool, anim:bool=False):
         if not value and self._mode_editor and self._old_text_line != self.active_md_editor().text:
             self.undo_manager.add(_TextModifiedCommand(self, self._active_index, self._old_text_line, self.active_md_editor().text))
         # self._mode_editor =value
         if -1 < self._active_index < len(self.data):
-            self.data[self._active_index] ['mode_editor'] = value
-            self.data[self._active_index]['cursor'] = self._cursor
-            self.data[self._active_index]['start_anim'] = anim
+            self.data_items[self._active_index] ['mode_editor'] = value
+            self.data_items[self._active_index]['cursor'] = self._cursor
+            self.data_items[self._active_index]['start_anim'] = anim
             if value:
-                self._old_text_line = self.data[self._active_index]['md_line'].md_text
+                self._old_text_line = self.data_items[self._active_index]['md_line'].md_text
+            # Actualiza el View
+            self.apply_data_items()
             self.refresh_from_data()
         else:
             self._active_index = -1
@@ -618,7 +635,7 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
             touch.grab(self)  # Marca este touch como manejado por este widget
         return super().on_touch_down(touch)
 
-    def on_touch_up(self, touch):
+    def on_touch_up(self, touch):  # Hay que ver como con data y data_items. Deberia tener actualizada la informacion de selccion en los dos
         # print(f'RecycleListView.on_touch_up {self.uid}, collide_point={self.collide_point(*touch.pos)}')
         if touch.grab_current is self:  # Verifica si este widget "grabó" el evento touch
             # print('   Con Grab')
@@ -710,7 +727,7 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
                 if data:
                     self.unactivate()  # Desactiva el modo edicion
                     self.activate_from_data(data, anim=True)  # Activa el item
-                    self.scroll_to_index(data['l_id'])
+                    self.scroll_to_index(data['index'])
 
             # Flecha abajo + Ctrl, mueve al Siguiente Título
             elif keycode == 274 and 'ctrl' in special_keys:  # Flecha abajo + Ctrl, mueve al Siguiente Título
@@ -719,7 +736,7 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
                 if data:
                     self.unactivate()  # Desactiva el modo edicion
                     self.activate_from_data(data, anim=True)  # Activa el item
-                    self.scroll_to_index(data['l_id'])
+                    self.scroll_to_index(data['index'])
 
 
             # Ctrl + C, Copiar linea/s seleccionada
@@ -924,6 +941,8 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         pass
 
 
+VER ESTO Y RECODIFICAR
+# Index indica la posicion en data. Para data_items es nro de linea -1 desde md_line
 
 # --- Funciones Undo  ---------------------------------------------------------------------------
 class _RemoveLinesCommand(Command):
@@ -954,7 +973,6 @@ class _RemoveLinesCommand(Command):
                 self.md_doc_editor.append_line(self.md_text[ii])
             else:  # Podria verificar tambien que sea > -1
                 self.md_doc_editor.insert_line(value_ii, self.md_text[ii])
-            
         self.md_doc_editor.select_indexs(self.indexs[:])  # Re Seleccion las lineas
         self.md_doc_editor.activate_from_index(value_ii, anim=False)  # Activa la ultima linea de la seleccion
         self.md_doc_editor.in_editing(False)
