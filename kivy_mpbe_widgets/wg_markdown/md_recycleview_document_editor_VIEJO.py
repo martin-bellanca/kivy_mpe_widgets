@@ -101,62 +101,38 @@ class SelectableRecycleBoxLayout(RecycleBoxLayout):  # FocusBehavior, LayoutSele
     ''' Adds selection and focus behavior to the view.'''
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # self._active_index = -1
-
-    # # Funciones de Seleccion de Items -----------------------------------------
-    # def set_active_item(self, index:int, scroll_to=False):
-    #     self._active_index = index
-    #     if scroll_to:
-    #         self.parent.scroll_to_index(index)
-    #     for view in self.children:
-    #         view.active = (view.index == index)
+        self._active_index = -1
     
-    # def set_select_item(self, index:int, scroll_to=False):
-    #     self._active_index = index
-    #     if scroll_to:
-    #         self.parent.scroll_to_index(index)
-    #     for view in self.children:
-    #         view.active = (view.index == index)
-
-    # def add_select_item(self, index:int, scroll_to=False):
-    #     self.
+    def set_active_item(self, index, scroll_to=False):
+        self.active_index = index
+        # if scroll_to:
+        #     self.parent.scroll_to_index(index)
+        for view in self.children:
+            view.active = (view.index == index)
     
-    # # Manejadores de Eventos de Items Hijos -----------------------------------
-    # def handle_hotlight_event(self, index:int, state:bool):
-    #     """Se ejecuta desde GHotlightItem cuando se activa o des-activa el hotlight"""
-    #     self.hotlight = state
-
-    # def touch_left_up_event(self, index:int, state:bool):
-    #     self.set_active_item(index)
-
-
-
-    # def animate_range_selection(self, start_index, end_index):
-    #     """
-    #     Orquesta la animación secuencial para una selección en rango.
-    #     Se usa en selcción multiple con el mouse.
-    #     """
-    #     if not self.multiselect: return
-    #     self.clear_selection()
+    def animate_range_selection(self, start_index, end_index):
+        """ Orquesta la animación secuencial para una selección en rango. """
+        if not self.multiselect: return
+        self.clear_selection()
         
-    #     start = min(start_index, end_index)
-    #     end = max(start_index, end_index)
+        start = min(start_index, end_index)
+        end = max(start_index, end_index)
         
-    #     # Determinar dirección para un efecto natural
-    #     forward = start_index < end_index
-    #     indices = range(start, end + 1) if forward else range(end, start - 1, -1)
+        # Determinar dirección para un efecto natural
+        forward = start_index < end_index
+        indices = range(start, end + 1) if forward else range(end, start - 1, -1)
         
-    #     delay_per_item = 0.03 # Pequeño retraso entre cada item
-    #     delay = 0
+        delay_per_item = 0.03 # Pequeño retraso entre cada item
+        delay = 0
         
-    #     for i in indices:
-    #         # Usar Clock para retrasar la animación de cada item
-    #         Clock.schedule_once(lambda dt, index=i: self._animate_item_in_range(index), delay)
-    #         delay += delay_per_item
+        for i in indices:
+            # Usar Clock para retrasar la animación de cada item
+            Clock.schedule_once(lambda dt, index=i: self._animate_item_in_range(index), delay)
+            delay += delay_per_item
     
-    # def _animate_item_in_range(self, index):
-    #     """ Selecciona y anima un solo item como parte de un rango. """
-    #     self.select_node(index)
+    def _animate_item_in_range(self, index):
+        """ Selecciona y anima un solo item como parte de un rango. """
+        self.select_node(index)
         # La animación se dispara automáticamente vía apply_selection.
 
 
@@ -1154,622 +1130,12 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         UnActivateItemEventDispatcher.__init__(self)
         SelectItemEventDispatcher.__init__(self)
         UnSelectItemEventDispatcher.__init__(self)
-        # Inicializa el Documento -------
-        self.initialize_document()
-        self.activate_background = activate_background  # Activa el cambio de tonalidad en el fondo de los items
-        self.on_scroll_event = None  # Referencia al evento de scroll para el item en edicion
-        self.layout = self.ids.srblayout
-        # Canvas de graficos
-        with self.canvas.after:
-            if not self.flat: self.graphic_border = GBorder(self)
-            self.graphic_focus = GFocus(self)
-        # Eventos
-        Window.bind(on_key_down=self._on_keyboard_down)
-
-    def initialize_document(self):
-        'Inicializa el documento'
-        self.data_items = dict()  # Clase sobre la que se ejecutan los cambios para luego copiar al data del RecycleView. Para implementar filtros.
-        self.undo_manager.clear_stack()
-        self._md_lines = None
-        self._item_hotlight = None  # No se si se esta asignando
-        self.selected_indexs = []  # Item actual seleccionado
-        self.active_index = -1
-        self.active_view = None
-        self._cursor = (1000, -1)  # es una tupla (columna, fila)
-        self._mode_editor = True
-        self._old_text_line = None  # Guarda el texto de la linea antes de editarla
-        # Altura del layout de items
-        # Nota: Hay que mantenerla actualizada con el agregado, borrado y cambio de tamañano del item en edicion
-        # self.layout_height = 0
-
-    ''' Funciones de la Interfaz -------------------------------'''
-    def apply_data_items(self):
-        if self.filter:
-            if self.filter_txt.strip() != '':
-                if self.filter_up:
-                    # Incliye en el filtro las lineas padre de las que cumplen el filtro
-                    pass
-                else:
-                    # Aplica el filtro solo a las lineas que coinciden con el filtro
-                    self.data = [di for di in self.data_items if self.filter_txt in di['md_line'].md_text]
-                    # self.data = []
-                    # ix = 0
-                    # for di in self.data_items:
-                    #     if self.filter_txt in di['md_line'].md_text:
-                    #         di['state'].index = ix
-                    #         self.data.append(di)
-                    #         ix += 1
-            else:
-                self.data = self.data_items.copy()
-                # self.data = []
-                # ix = 0
-                # for di in self.data_items:
-                #     di['state'].index = ix
-                #     self.data.append(di)
-                #     ix += 1
-        else:
-            # copia la lista completa
-            self.data = self.data_items.copy()
-        pass
-
-    def populate_from_md_lines(self, md_lines):
-        print("------------------------------------------------------------------------------------------------")
-        print("+- MDDocumentEditor.populate_from_md_lines() ---------------------------------------------------")
-        self.initialize_document()
-        self._md_lines = md_lines
-        self.data_items = []
-        for id, mdl in enumerate(md_lines, start=0):
-            print(f"   L{mdl.num_line}: {mdl.md_text}")
-            data_line = DataItemLineMDD(md_line=mdl, data_themed=DataThemed(),
-                                        data_show=DataShow(), data_state=DataState())  # no uso el id del data. Uso md_line.num_line que se auto-actualiza
-            dic_line = data_line.to_dict()
-            self.data_items.append(dic_line)
-        self.apply_data_items()
-
-    ''' Funciones de Eventos de la Intefaz ---------------------'''
-    def on_filter(self, instance, value):
-        self.filter = value
-        self.apply_data_items()
-    
-    def on_filter_txt(self, instance, value):
-        self.filter_txt = value
-        self.apply_data_items()
-
-    def on_filter_up(self, instance, value):
-        self.filter_up = value
-        self.apply_data_items()
-
-    def on_search(self, instance, value):
-        self.search = value
-        self.apply_data_items()
-
-    def on_focus(self, instance, value):
-        # print(f'MDDocumentEditor._on_focus {self.uid}-{value}')
-        if value == False and MDDocumentEditor.instance_focus == instance:
-            # print("    Focus False")
-            MDDocumentEditor.instance_focus == None
-        elif value == True:
-            # print("    Focus True")
-            MDDocumentEditor.instance_focus = instance
-        return True
-
-    '''Funciones scroll -------------------------------------------------------'''
-    def scroll_to_index(self, index):
-        self.scroll_y = 1 - index / len(self.data)
-
-    def item_scroll_pos_y(self, item):
-        '''
-        Devuelve la coordenada y del item respecto al sistema de coordenadas del RecycleView
-        La diferencia de altura del layout - recycle view por el valor de scroll_y que va de 0 a 1 es el coef de paso
-        entre el sistema de coordenadas del view y del layout.
-        para scrool_y = 0 -> rv_y = ly_y
-        para scroll_y = 1 -> rv_y + rv_height = ly_y + ly_heignt
-        '''
-        if item:
-            layout = self.layout
-            ly_height = layout.height
-            rv_height = self.height
-            delta_1 = ly_height - rv_height
-            delta = delta_1 * self.scroll_y
-            return item.y - delta
-        else:
-            return 0
-
-    '''Funciones de Indices ---------------------------------------------------'''
-    def index_from_data(self, data):
-        return self.data.index(data)
-
-    def index_from_item(self, item:MDDocumentLineEditor):
-        return self.layout.get_view_index_at(self.layout.to_local(*item.pos))
-    
-    def index_from_pos(self, pos:tuple):
-        return self.layout.get_view_index_at(self.layout.to_widget(*pos))
-
-    def item_from_index(self, data_index):
-        for view in self.layout.children:
-            if view.index == data_index:
-                return view
-        return None
-
-    # OK data item
-    # def active_md_editor(self):
-    #     item = self.item_from_index(self.active_index)
-    #     if item:
-    #         return item.wg_line_editor.md_editor if self.active_index > -1 else None
-    #     else:
-    #         None
 
 
 
 
-    '''Funciones de Selección de Items ----------------------------------------'''
-    def select_from_item(self, item:MDDocumentLineEditor, anim:bool=False, anim_type:str="point", cursor_pos:tuple=None):  # TODO: cambiar a select_from_item
-        # print(f'MDDocumentEditor.select - {item.index} -----------------------')
-        self.select_from_data_item(data_item=self.data[self.index_from_item(item)], anim=anim, anim_type=anim_type, cursor_pos=cursor_pos)
-
-    def select_from_index(self, index:int, anim:bool=False, anim_type:str="point", cursor_pos:tuple=None):  # TODO: cambiar a select_from_index
-        self.select_from_data_item(data_item=self.data[index], anim=anim, anim_type=anim_type, cursor_pos=cursor_pos)
-
-    def select_from_data_item(self, data_item:dict, anim:bool=False, anim_type:str="point", cursor_pos:tuple=None):  # TODO: cambiar a select_from_data
-        '''
-        Selecciona la linea. Puede haber varias lineas seleccionadas pero una sola activa
-        anim puede ser True, False o una tupla que indica la pos de inicio de la animacion
-        '''
-        print(f"MDDocumentEditor.select_data_item(data_item: {data_item})")
-        # Marca el item como seleccionado
-        state = data_item['state']
-        themed = data_item['themed']
-        state.selected = True
-        themed.start_anim = anim
-        themed.anim_type = anim_type
-        themed.cusor_pos = cursor_pos
-        # self.data_items[data_item.index]['state'].selected = True
-        
-
-        # Agrega el item al listado de seleccion
-        index = self.index_from_data(data_item)
-        self.selected_indexs.append(index)
-        # Actualiza el View
-        self.refresh_from_data()
-        SelectItemEventDispatcher.do_something(self, data_item, index)
-
-    def select_indexs(self, indexs:list, anim:bool=False, anim_type:str="point", cursor_pos:tuple=None):
-        self.selected_indexs = indexs  # Re Seleccion las lineas
-        for ii in indexs:
-            if -1 < ii and ii < len(self.data):
-                self.data[ii]['state'].selected = True
-                themed = self.data[ii].themed
-                themed.anim = anim
-                themed.anim_type = anim
-                themed.cursor_pos = cursor_pos
-    
-    '''Funciones de Des-Selección de Items ------------------------------------'''
-    def unselect_from_item(self, item, anim=False):  # TODO: cambiar a unselect_from_item
-        # print(f'RecycleListView.unselect - {item.file_name} -------------------')
-        self.unselect_from_data_item(self.data[self.index_from_item(item)], anim)
-
-    def unselect_from_index(self, index, anim=False):  # TODO: cambiar a unselect_from_index
-        self.unselect_from_data_item(self.data[index], anim)
-
-    def unselect_from_data_item(self, data_item, anim=False):  # TODO: cambiar a unselect_from_data
-        # print(f"MDDocumentEditor.unselect_data_item(data_item)")
-        data_item['state'].selected = False
-        data_item['themed'].anim = anim
-        index = self.index_from_data(data_item)
-        # self.refresh_from_data()
-        # print(f'  Lista de Seleccionados antes{self._selected_indexs}, {data_item["l_id"]}')
-        self.selected_indexs.remove(index)
-        # print(f'  Lista de Seleccionados despues{self._selected_indexs}')
-
-        UnSelectItemEventDispatcher.do_something(self, data_item, index)
-
-    '''Funciones de Activació y Des-Activación --------------------------------'''
-    def unactivate(self, anim=False):
-        '''anim puede ser True, False o una tupla que indica la pos de inicio de la animacion'''
-        # print("MDDocumentEditor.unactivate_from_data(...))")
-        
-        # Des-selecciona todos los item y borra la lista de selccion --------------------
-        for ix in self.selected_indexs:
-            if ix < len(self.data):
-                self.data[ix]['state'].selected = False
-                self.data[ix]['state'].mode_editor = False
-        self.selected_indexs.clear()
-
-        state = self.data[self.active_index]['state']
-        themed = self.data[self.active_index]['themed']
-
-        state.active = False
-        state.selected = False
-        themed.anim = True
-        themed.anim_type = 'fade'
-
-        self.active_index = -1
-
-    def active_to_previus_item(self, cursor_pos=None):
-        # print("MDDocumentEditor.move_to_previus_item()")
-        # print(f'  Active Index= {self._active_index}')
-        
-        # TODO: NO ESTA ASIGNADO ACTIVE INDEX
-        
-        if self.active_index > 0:
-            # item_prev = self.item_from_index(self._active_index)
-            index = self.active_index - 1 if self.active_index > 0 else 0
-            # print(f'  active index= {self._active_index}')
-            
-            self.unactivate(anim=True)  # Desactiva el modo de edicion del item actual
-            # self.unactivate_from_index(self._active_index, anim=True)
-            
-            # print(f'  active index= {self._active_index}, despues de unactivate')
-            # Actualiza la vista para que el nuevo item este visible
-            item = self.item_from_index(index)
-            if item:
-                if self.item_scroll_pos_y(item) + item.height > self.y + self.height:  # Mover el item a la base del RecycleView
-                    self.scroll_y += item.height / (self.layout_manager.height - self.height)
-            else:
-                # print(f'    Scroll por index= {(index +0.5) / len(self.data)}')
-                self.scroll_y = 1- (index +0.5) / len(self.data)
-        else:
-            index = len(self.data) - 1
-            item = self.item_from_index(index)
-            self.scroll_y = 0
-
-        self.activate_from_index(index, cursor_pos=cursor_pos, anim=True)
-        return item
-
-    def active_to_next_item(self, cursor_pos=None):
-        # print("MDDocumentEditor.move_to_next_item()")
-        # print(f'  Active Index= {self._active_index}')
-        if self.active_index > -1:
-            item_prev = self.item_from_index(self.active_index)
-            index = self.active_index + 1 if self.active_index < len(self.data) - 1 else len(self.data) - 1
-            
-            # self.unactivate_from_index(self._active_index, anim=True)
-            self.unactivate(anim=True)  # Desactiva el modo de edicion del item actual
-
-            # Actualiza la vista para que el nuevo item este visible
-            if item_prev:
-                if self.item_scroll_pos_y(item_prev) - item_prev.height < 0:
-                    self.scroll_y -= item_prev.height / (self.layout_manager.height - self.height)
-            else:
-                self.scroll_y = 1 - (self.active_index + 0.5) / len(self.data)
-        else:
-            index = 0
-            self.scroll_y = 0
-        self.activate_from_index(index, cursor_pos=cursor_pos, anim=True)
-        return self.item_from_index(index)
-
-    def activate_from_item(self, item:MDDocumentLineEditor, cursor_pos:tuple=None, anim:bool=False, anim_type:str="point"):
-        """
-        Activa el item
-
-        Args:
-            item (MDDocumentLineEditor): Widget que representa una linea de MDDocument
-            cursor_pos (tuple, optional): Posicion del cursor donde se comenzar la animacion "point". Defaults to None.
-            anim (bool, optional): Indica si la activacion se anima. Defaults to False.
-            anim_type (str, optional): Tipo de Animacion a implementar en la activación. Defaults to "point".
-        """
-        self.activate_from_data(self.data[self.index_from_item(item)], cursor_pos=cursor_pos, anim=anim, anim_type=anim_type)
-
-    def activate_from_index(self, index, cursor_pos=None, anim=False, anim_type:str="point"):
-        """
-        Activa el item desde el index
-
-        Args:
-            index (int): Indice del Widget que representa una linea de MDDocument
-            cursor_pos (tuple, optional): Posicion del cursor donde se comenzar la animacion "point". Defaults to None.
-            anim (bool, optional): Indica si la activacion se anima. Defaults to False.
-            anim_type (str, optional): Tipo de Animacion a implementar en la activación. Defaults to "point".
-        """
-        if -1 < index and index < len(self.data):
-            self.activate_from_data(self.data[index], cursor_pos=cursor_pos, anim=anim, anim_type=anim_type)
-
-    def activate_from_data(self, data_item, cursor_pos=None, anim=False, anim_type:str="point"):
-        '''
-        Activa la linea, sola una linea puede estar activa. La que puede editarse y tambien esta seleccionada.
-        anim puede ser True, False o una tupla que indica la pos de inicio de la animacion
-        '''
-        print("MDDocumentEditor.activate_from_data(...))")
-        state = data_item['state']
-        themed = data_item['themed']
-        
-        state.selected = True
-        state.active = True
-        themed.anim = anim
-        themed.anim_type = anim_type
-        state.cursor = self._cursor if cursor_pos == None else cursor_pos
-
-        print(f'+++ Cursor= {state.cursor} ------------------------------')
-
-        state.mode_editor = self._mode_editor
-        self.active_index = self.index_from_data(data_item)
-        # Agrega el item a la seleccion
-        if not self.active_index in self.selected_indexs:
-            self.selected_indexs.append(self.active_index)
-        # Guarda copia del texto
-        self._old_text_line = data_item['md_line'].md_text
-        # Libera el evento
-        ActivateItemEventDispatcher.do_something(self, data_item, self.active_index)
-
-    '''Funciones de Items -----------------------------------------------------'''
-    def get_previus_data_title(self):
-        '''Devuelve el titulo anterior al indice indicado'''
-        index = self.active_index
-        if -1 < index < len(self.data):
-            for ii in range(index - 1, -1, -1):
-                if self.data_items[ii]['md_line'].type in (MD_LINE_TYPE.TITLE, MD_LINE_TYPE.HEAD_TITLE):
-                    return self.data_items[ii]
-        return None
-
-    def get_next_data_title(self):
-        '''Devuelve el siguiente titulo despues del indice indicado'''
-        index = self.active_index
-        if -1 < index < len(self.data):
-            for ii in range(index + 1, len(self.data)):
-                if self.data_items[ii]['md_line'].type in (MD_LINE_TYPE.TITLE, MD_LINE_TYPE.HEAD_TITLE):
-                    return self.data[ii]
-        return None
-
-    ''' Funciones Edicion de Lineas --------------------------------------------'''
-    def move_line_to(self, actual_index, new_index):  # Hay que ver que pass con actual y new index por que apuntan al data creo
-        '''Mueve la linea de la posicion actual_index a la poscicion new_index'''
-        # print('MDDocumentEditor.move_line_to()')
-        if new_index > actual_index:  # Mueve hacia arriba
-            # print('  Mueve hacia arriba')
-            self._md_lines.insert(new_index, self._md_lines.pop(actual_index))  # Mueve MDLine
-            self.data_items.insert(new_index, self.data_items.pop(actual_index))  # Mueve el data
-            # Ajusta la lista de los indices seleccionados
-            for ii in range(len(self.selected_indexs)):
-                self.selected_indexs[ii] -= 1
-            # Ajustar prev y next
-            if actual_index > 0:
-                self._md_lines[actual_index - 1].next_line = self._md_lines[actual_index]
-                self._md_lines[actual_index].prev_line = self._md_lines[actual_index - 1]
-            else:
-                self._md_lines[actual_index].prev_line = None  #  Para la primer linea
-            self._md_lines[new_index-1].next_line = self._md_lines[new_index]
-            self._md_lines[new_index].prev_line = self._md_lines[new_index-1]
-            if new_index < len(self._md_lines) - 1:
-                self._md_lines[new_index].next_line = self._md_lines[new_index + 1]
-                self._md_lines[new_index + 1].prev_line = self._md_lines[new_index]
-            else:
-                self._md_lines[new_index].next_line = None  # Ultima linea
-            # Ajusta los nros de linea
-            nl = 1 if actual_index == 0 else self._md_lines[actual_index - 1].num_line + 1
-            self._md_lines[actual_index].num_line = nl
-            # Actualiza el Active Index
-            self.active_index -= 1
-            # Ajusta el scroll para que el item este visible
-            item = self.item_from_index(actual_index)
-            if self.item_scroll_pos_y(item) + item.height > self.y + self.height:  # Mover el item a la base del RecycleView
-                self.scroll_y += item.height / (self.layout_manager.height - self.height)
-            # Actualiza el View
-            self.apply_data_items()
-            self.refresh_from_data()
-        elif new_index < actual_index:  # Mueve hacia abajo
-            # print('  Mueve hacia abajo')
-            self._md_lines.insert(new_index, self._md_lines.pop(actual_index))  # Mueve MDLine
-            self.data_items.insert(new_index, self.data_items.pop(actual_index))  # Mueve el data
-            # Ajusta la lista de los indices seleccionados
-            for ii in range(len(self.selected_indexs)):
-                self.selected_indexs[ii] += 1
-            # Ajustar prev y next
-            if new_index > 0:
-                self._md_lines[new_index - 1].next_line = self._md_lines[new_index]
-                self._md_lines[new_index].prev_line = self._md_lines[new_index - 1]
-            else:
-                self._md_lines[new_index].prev_line = None  # Primera Linea
-            self._md_lines[new_index].next_line = self._md_lines[new_index + 1]
-            self._md_lines[new_index + 1].prev_line = self._md_lines[new_index]
-
-            if actual_index < len(self._md_lines) - 1:
-                self._md_lines[actual_index].next_line = self._md_lines[actual_index + 1]
-                self._md_lines[actual_index + 1].prev_line = self._md_lines[actual_index]
-            else:
-                self._md_lines[actual_index].next_line = None  # Ultima Linea
-            # Ajusta los nros de linea
-            self._md_lines[new_index].num_line = self._md_lines[new_index - 1].num_line + 1
-            # Actualiza el Active Index
-            self.active_index += 1
-            # Ajusta el scroll para que el item este visible
-            item = self.item_from_index(actual_index)
-            if self.item_scroll_pos_y(item) < 0:  # Mover el item a la base del RecycleView
-                self.scroll_y -= item.height / (self.layout_manager.height - self.height)
-            # Actualiza el View
-            self.apply_data_items()
-            self.refresh_from_data()
-
-    def append_line(self, md_text):
-        '''Agrega una linea'''
-        index = len(self._md_lines)-1
-        # md_line
-        md_line = MDLine(md_text=md_text,
-                         prev_line=self._md_lines[index], next_line=None,
-                         type=MD_LINE_TYPE.TEXT, num_line=index+2)
-        self._md_lines[index].next_line = md_line
-        self._md_lines.append(md_line)
-        # Data
-        data_line = DataItemLineMDD(md_line=md_line, data_themed=DataThemed(),
-                                    data_show=DataShow(), data_state=DataState())  # DocLineDataDic(index, md_line)
-        dic_line = data_line.to_dict()
-        self.data_items.append(dic_line)
-        # Actualiza el View
-        self.refresh_from_data()
-        return md_line
-
-    def insert_line(self, index:int, md_text:str=''):
-        """Inserta una linea en el indice indicado"""
-        # print('MDDocument.insert_lines() -----------------------')
-        if -1 < index < len(self._md_lines):
-            md_line = MDLine(md_text=md_text,
-                            prev_line=self._md_lines[index-1], next_line=self._md_lines[index],
-                            type=MD_LINE_TYPE.TEXT, num_line=0)  # TIRA ERROR EN type NO SE POR QUE
-            # Inserta md_line y ajusta las dependendencias
-            self._md_lines.insert(index, md_line)
-            md_line.update_type()
-            if index > 0:
-                self._md_lines[index - 1].next_line = self._md_lines[index]
-            else:
-                self._md_lines[index].prev_line = None
-            self._md_lines[index + 1].prev_line = self._md_lines[index]
-            md_line.num_line = index + 1
-            # Inserta en data ---------------------------------------
-            data_line = DataItemLineMDD(md_line=md_line, data_themed=DataThemed(),
-                                        data_show=DataShow(), data_state=DataState())  # DocLineDataDic(index+1, md_line)
-            dic_data_line = data_line.to_dict()
-            self.data_items.insert(index, dic_data_line)
-            self.update_data_index(index)
-            # Refresca el View --------------------------------------
-            self.apply_data_items()
-            self.refresh_from_data()
-            return md_line
-        else:
-            return None
-
-    def remove_line(self, index:int):
-        # Ajusta los indices de los Items Seleccionados
-        for ii, value in enumerate(self.selected_indexs, start=0):
-            if value > index:
-                self.selected_indexs[ii] = value - 1
-            # print(f'ii={ii}, value={value}, nuevo valor={self._selected_indexs[ii]}')
-        # Borrar en _md_lines y ajusta las dependendencias
-        del(self._md_lines[index])
-        if index < len(self._md_lines)-1:
-            if index > 0:
-                self._md_lines[index-1].next_line = self._md_lines[index]
-                self._md_lines[index].prev_line = self._md_lines[index-1]
-            else:
-                self._md_lines[index-1].next_line = None
-                self._md_lines[index].prev_line = None
-            self._md_lines[index].num_line = index + 1
-        # Borra en el data
-        del(self.data_items[index])
-        self.update_data_index(index)
-        # Refresca el View
-        self.apply_data_items()
-        self.refresh_from_data()
-
-    def in_editing(self, value:bool, anim:bool=False):
-        if not value and self._mode_editor and self._old_text_line != self.active_md_editor().text:
-            self.undo_manager.add(_TextModifiedCommand(self, self.active_index, self._old_text_line, self.active_md_editor().text))
-        # self._mode_editor =value
-        if -1 < self.active_index < len(self.data):
-            self.data_items[self.active_index] ['mode_editor'] = value
-            self.data_items[self.active_index]['cursor'] = self._cursor
-            self.data_items[self.active_index]['start_anim'] = anim
-            if value:
-                self._old_text_line = self.data_items[self.active_index]['md_line'].md_text
-            # Actualiza el View
-            self.active_view.di_state.mode_editor = value
-            self.active_view.animate_editor(value)
-        else:
-            self.active_index = -1
-            self.active_view = None
-
-    # def update_numlines(self):  # No Hace Falta. Probar sacar
-    #     for ii, line in enumerate(self._md_lines):
-    #         line.num_line = ii + 1
-
-    '''Eventos de Usuario -----------------------------------------------------'''
-    def on_touch_up(self, touch):
-        print('MDDocument.on_touch_up->Rueda del mouse')
-
-        if touch.button in ['scrollup', 'scrolldown']:
-            for chview in self.layout.children:
-                chview.graphic_hotlight.show(False)
-                if self.active_index != chview.index:
-                    chview.mode_editor = False
-                    chview.wg_line_editor.md_editor.opacity = 0.0
-                    chview.graphic_select.show(False)
-                    chview.di_state.selected = False
-                    chview.di_state.active = False
-                # else:
-                #     chview.graphic_select.show(False)
-        
-
-        if self.on_scroll_event:
-            self.on_scroll_event(self)  # Disparar el evento de scroll sobre el item en edicion
-        super(RecycleView, self).on_touch_up(touch)
-
-    # def on_touch_down(self, touch):
-    #     # print(f'RecycleListView.on_touch_down')
-    #     if self.collide_point_to_window(*touch.pos):
-    #         # print(f'  Grab')
-    #         touch.grab(self)  # Marca este touch como manejado por este widget
-    #     return super().on_touch_down(touch)
-
-    # def on_touch_up(self, touch):  # Hay que ver como con data y data_items. Deberia tener actualizada la informacion de selccion en los dos
-    #     # print(f'RecycleListView.on_touch_up {self.uid}, collide_point={self.collide_point(*touch.pos)}')
-    #     if touch.grab_current is self:  # Verifica si este widget "grabó" el evento touch
-    #         # print('   Con Grab')
-    #         # mods = touch.modifiers
-    #         # is_shift = 'shift' in Window.keyboard_modifiers
-    #         # is_ctrl = 'ctrl' in Window.keyboard_modifiers or 'meta' in Window.keyboard_modifiers
-
-    #         dt_index = self.index_from_pos(touch.pos)
-
-    #         # Verifica que el índice sea válido
-    #         if dt_index is None or dt_index < 0 or dt_index >= len(self.data):
-    #             touch.ungrab(self)
-    #             return False
-    #         item = self.item_from_index(dt_index)
-    #         data_it = self.data[dt_index]
-         
-
-    #         elif touch.button == 'right':  # Modo Edicion (Boton Derecho)
-    #             # print('Boton Derecho')
-    #             # item.start_editing(self, data)
-    #             pass
-    #         elif touch.button in ['scrollup', 'scrolldown']:
-    #             # print('RecycleListView.on_touch_down->Rueda del mouse')
-    #             # item = self.item_from_index(self._active_index)
-    #             # if item != None:
-    #             #     item.stop_editing(self, data)
-    #             touch.ungrab(self)
-    #             return False
-    #         # print("  ungrab")
-    #         touch.ungrab(self)  # Libera el touch
-    #         return False
-    #     super(RecycleView, self).on_touch_up(touch)
-
-    def _on_keyboard_down(self, window, keycode, modifier, char, special_keys):
-        print("MDDocumentEditor._on_keyboard_up Codigo de Teclas", keycode, modifier, char, special_keys)
-        pass
-
-        
-    
-    # Manejadores de Eventos de Items Hijos -----------------------------------
-    def handle_hotlight_event(self, index:int, view:MDDocumentLineEditor, active:bool):
-        """Se ejecuta desde GHotlightItem cuando se activa o des-activa el hotlight"""
-        self.hotlight = active
-
-    def handle_touch_left_up_event(self, index:int, view:MDDocumentLineEditor, touch):
-        # Desactiva el resto de los Items
-        for chview in self.layout.children:
-            if self.active_index == chview.index:
-                chview.graphic_select.animate_fade(False)
-                chview.di_state.selected = False
-                chview.animate_editor(False)
-            # else:
-            #     chview.graphic_select.show(False)
-            chview.di_state.active = chview.di_state.selected = (chview.index == index)
-        # Asigna el Item Activo
-        self.active_index = index
-        self.active_view = view
-        # Des-Selecciona todos y Selecciona el Activo
-        self.selected_indexs.clear()
-        self.selected_indexs.append(index)
-        # Activa la animación de selección
-        view.graphic_select.animate_fade(True)
-        # Activa el Modo Edicion
-        if self._mode_editor is True:
-            # Obtiene la posición del cursor del texto en el lugar del click del mouse
-            self._cursor = view.wg_line_editor.md_editor.get_cursor_from_xy(*self.to_local(*touch.pos))
-            self.in_editing(True)
-        # Lanza el evento de Activacion 
-        ActivateItemEventDispatcher.do_something(self, view, index)
 
 
-        
 
 
 
@@ -1873,7 +1239,7 @@ class _TextModifiedCommand(Command):
         self.md_doc_editor.refresh_from_data()
 
     def undo(self):
-        self.new_index = self.md_doc_editor.active_index
+        self.new_index = self.md_doc_editor._active_index
         self.md_doc_editor._md_lines[self.old_index].md_text = self.old_text
         self.md_doc_editor.unactivate()
         self.md_doc_editor.activate_from_index(self.old_index)  # Activa la linea modificada
@@ -1884,7 +1250,7 @@ class _EnterInEditionCommand(Command):
     """Comando que se ejecuta cuando se presiona la tecla Enter o Intro en el editor de documentos Markdown."""
     def __init__(self, md_doc_editor: MDDocumentEditor):
         self.md_doc_editor = md_doc_editor
-        self.index = self.md_doc_editor.active_index
+        self.index = self.md_doc_editor._active_index
         self.text = self.md_doc_editor.active_md_editor().text[self.md_doc_editor._cursor[0]:]
 
     def execute(self):
@@ -1911,7 +1277,7 @@ class _DeleteOnEndLineCommand(Command):
     """Comando que se ejecuta cuando se presiona la tecla Delete al final de una linea en el editor de documentos Markdown."""
     def __init__(self, md_doc_editor: MDDocumentEditor):
         self.md_doc_editor = md_doc_editor
-        self.index = self.md_doc_editor.active_index
+        self.index = self.md_doc_editor._active_index
         self.text = self.md_doc_editor._md_lines[self.index + 1].md_text[:]
 
     def execute(self):
@@ -1944,7 +1310,7 @@ class _BackspaceOnStartLineCommand(Command):
     """Comando que se ejecuta cuando se presiona la tecla Backspace al inicio de una linea en el editor de documentos Markdown."""
     def __init__(self, md_doc_editor: MDDocumentEditor):
         self.md_doc_editor = md_doc_editor
-        self.index = self.md_doc_editor.active_index
+        self.index = self.md_doc_editor._active_index
         self.text = self.md_doc_editor._md_lines[self.index].md_text[:]
 
     def execute(self):

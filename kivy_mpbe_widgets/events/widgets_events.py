@@ -45,3 +45,29 @@ class HotlightEventDispatcher(EventDispatcher):
 
     def on_hotlight(self, *args):
         pass
+
+
+class StartAnimEventDispatcher(EventDispatcher):
+    def __init__(self, **kwargs):
+        self.register_event_type('on_start_anim')
+        EventDispatcher.__init__(self, **kwargs)
+#         super(TouchEventDispatcher, self).__init__(**kwargs)
+
+    def do_something(self, state, mouse_pos):
+        self.dispatch('on_start_anim', state, mouse_pos)
+
+    def on_start_anim(self, *args):
+        pass
+
+
+class EndAnimEventDispatcher(EventDispatcher):
+    def __init__(self, **kwargs):
+        self.register_event_type('on_end_anim')
+        EventDispatcher.__init__(self, **kwargs)
+#         super(TouchEventDispatcher, self).__init__(**kwargs)
+
+    def do_something(self, state, mouse_pos):
+        self.dispatch('on_end_anim', state, mouse_pos)
+
+    def on_end_anim(self, *args):
+        pass

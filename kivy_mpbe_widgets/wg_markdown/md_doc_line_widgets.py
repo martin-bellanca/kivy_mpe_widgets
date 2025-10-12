@@ -45,6 +45,7 @@ from kivy.uix.stacklayout import StackLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.properties import BooleanProperty, StringProperty, OptionProperty, ObjectProperty, NumericProperty
 from kivy.clock import Clock
+from kivy.animation import Animation
 
 # kivy_mpbe_widgets ----------------------------------------------------------
 import kivy_mpbe_widgets
@@ -217,7 +218,8 @@ class MDLineEditor(FloatLayout):
         # Editor de texto -----------------------------------
         self.md_editor = MDLineTextInput(background_color=(0.8, 0.8, 0.8, 0.80),
                                           size_hint_y=None, pos_hint={'x': 0, 'y': 0},
-                                          opacity=1)  # , font_size=12
+                                          opacity=0.0)  # , font_size=12
+        self.add_widget(self.md_editor)
         # self.md_editor.text = self.line.md_text
         # print(self.md_editor.font_size)
         self.md_editor.bind(text=self.on_txt_change)
@@ -250,8 +252,17 @@ class MDLineEditor(FloatLayout):
         return self.line.type
     type = property(_get_type, _set_type)
 
+    # Propiedades de la animacion -------------------------------------------------------
+    def _set_opacity_editor(self, value):
+        """Callback que se activa cuando la propiedad _alpha_color cambia."""
+        # self._alpha_color = value
+        self.md_editor.opacity = value
+    def _get_opacity_editor(self):
+        return self.md_editor.opacity
+    _opacity_editor = property(_get_opacity_editor, _set_opacity_editor)
+
     # Private Functions ----------------------------------------
-    def _md_editor_focus(self):
+    def md_editor_focus(self):
         self.md_editor.focus = True
 
     def _update_height(self):
@@ -298,13 +309,23 @@ class MDLineEditor(FloatLayout):
     def on_line_type(self, instance, value):
         self.update_type()
 
-    def on_mode_editor(self, instance, value):
-        if value and value == self.mode_editor:
-            self.add_widget(self.md_editor)
-            Clock.schedule_once(lambda dt: self._md_editor_focus(), 0.15)
-            # self.editor_on_return = True
-        else:
-            self.remove_widget(self.md_editor)
+    # def on_mode_editor(self, instance, value):
+    #     if value:  # and value == self.mode_editor:
+    #         # self.md_editor.opacity = 0.5
+    #         # self.add_widget(self.md_editor)
+    #         # Activa fade para mostrar el editor 
+    #         Animation.cancel_all(self, 'opacity')
+    #         anim = Animation(opacity=0.95, d=1.0, t='out_quad')
+    #         anim.start(self.md_editor)
+    #         # Pasa el foco al editor
+    #         Clock.schedule_once(lambda dt: self._md_editor_focus(), 0.5)
+    #         # self.editor_on_return = True
+    #     else:
+    #         # Oculta el editor
+    #         Animation.cancel_all(self, 'opacity')
+    #         anim = Animation(opacity=0.0, d=1, t='out_quad')
+    #         anim.start(self.md_editor)
+    #         # self.remove_widget(self.md_editor)
 
     def on_txt_change(self, instance, value):
         self.active_label.md_text = value
@@ -340,6 +361,10 @@ class MDLineEditor(FloatLayout):
         else:  # Cuando gana el foco
             # self.editor_on_return = True
             pass
+
+    
+
+
 
 
 class MDDLDrag(Widget):

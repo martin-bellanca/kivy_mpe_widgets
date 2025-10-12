@@ -265,6 +265,9 @@ class BaseItem(RecycleDataViewBehavior, ThemeWidget, HotlightEventDispatcher):
         return self._selected
     selected = property(get_selected)
 
+    
+
+
     # Funciones UI ----------------------------------------------------------------------
     def select_item(self, rv, data):
         # print('BaseItem.select ffff-------------------')

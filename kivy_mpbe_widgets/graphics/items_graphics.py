@@ -237,6 +237,7 @@ class GSelectItem(InstructionGroup):
         self.sel_vertical_size = 30
         self.sel_horizontal_pos = 0
         self.sel_horizontal_size = 0
+        self.running = False  # Indica si hay una animacion en ejecucion
         # self.sel_click_x = 0
         # self.Sel_click_y = 0
         self._delta_x = 0
@@ -263,7 +264,7 @@ class GSelectItem(InstructionGroup):
     def show(self, value):
         '''Muestra el o Esconde el rectangulo sin animacion'''
         # print(f'Show')
-        # if not self.play:
+        # if not self.running:
         if value == True:
             self.alpha_color = 1.0
             self._color.a = self.alpha_color
@@ -337,7 +338,7 @@ class GSelectItem(InstructionGroup):
     # Funciones de Animación -------------------------------------------------
     def animate_select(self, value, mouse_pos):
         # print(f'GSelectItem.animate_select, value={value} alpha={self.alpha_color}')
-        self.play = True
+        self.running = True
         if value:
             # print(f"animate_Select->Selecciona {self._widget.uid}")
             wwp = self._widget.to_window(*self._widget.pos)
@@ -347,6 +348,7 @@ class GSelectItem(InstructionGroup):
             # print(f'sel v pos={self.sel_vertical_pos}')
             self._elapsed_time = 0  # Reinicia el tiempo
             Clock.schedule_interval(self._sel_v_anim, 1 / 60)  # 60 FPS - Ejecuta la animacion
+
         elif not value:
             # print(f"animate_Select->Deselecciona {self._widget.uid}")
             self.alpha_color = 0.0
@@ -388,6 +390,7 @@ class GSelectItem(InstructionGroup):
         # Detener la animación cuando alcance el tamaño objetivo
         if progress >= 1:
             Clock.unschedule(self._sel_h_anim)
+            self.running = False
 
     def _unsel_v_anim(self, dt):
         # Aumentar el tiempo transcurrido
@@ -425,3 +428,4 @@ class GSelectItem(InstructionGroup):
         if progress >= 1:
             Clock.unschedule(self._unsel_h_anim)
             self._color.a = 0.0
+            self.running = False
