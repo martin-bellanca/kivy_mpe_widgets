@@ -123,7 +123,7 @@ class GHotlightItem(InstructionGroup):
 
     def animate(self, active:bool):
         alpha = 1.0 if active else 0.0
-        Animation.cancel_all(self, '_alpha_color') # Cancelar animaciones previas
+        # Animation.cancel_all(self, '_alpha_color') # Cancelar animaciones previas
         # Inicia la animacion
         anim = Animation(_alpha_color=alpha, d=self.duration, t='out_quad')
         anim.start(self)
@@ -191,15 +191,11 @@ class GActiveItem(InstructionGroup):
     # Funciones de Animación -------------------------------------------------
     def show(self, value):
         '''Muestra el o Esconde el rectangulo sin animacion'''
-        if value == True:
-            self._alpha_color = 1.0
-        else:
-            self._alpha_color = 0.0
-        
-        # TODO: Pintar fondo de numero de linea si esta visible
+        self._alpha_color = 1.0 if value is True else 0.0
 
-    def animate(self, alpha):
-        Animation.cancel_all(self, '_alpha_color') # Cancelar animaciones previas
+    def animate(self, value):
+        alpha = 1.0 if value is True else 0.0
+        # Animation.cancel_all(self, '_alpha_color') # Cancelar animaciones previas
         # Inicia la animacion
         anim = Animation(_alpha_color=alpha, d=self.duration, t='out_quad')
         anim.start(self)
@@ -284,7 +280,7 @@ class GSelectItem(InstructionGroup):
             selected(bool): Indica el estado de la seleccion
         """
         alpha = 1.0 if selected else 0.0
-        Animation.cancel_all(self, '_alpha_color', '_size_h') # Cancelar animaciones previas
+        # Animation.cancel_all(self, '_alpha_color', '_size_h') # Cancelar animaciones previas
         # Inicia la animacion
         self._gr_rectangle.size = self._widget.size
         self._gr_rectangle.pos = self._widget.pos
@@ -295,7 +291,7 @@ class GSelectItem(InstructionGroup):
         """
         Anima la selección desde abajo hacia arriba.
         """
-        Animation.cancel_all(self, '_alpha_color', '_size_h') # Cancelar animaciones previas
+        # Animation.cancel_all(self, '_alpha_color', '_size_h') # Cancelar animaciones previas
         # Define las variables de base
         self._size_h = 0
         self._alpha_color = 1
@@ -307,7 +303,7 @@ class GSelectItem(InstructionGroup):
         """
         Anima la selección desde arriba hacia abajo.
         """
-        Animation.cancel_all(self, '_alpha_color', '_size_h') # Cancelar animaciones previasAnimation.cancel_all(self, 'alpha_color') # Cancelar animaciones previas
+        # Animation.cancel_all(self, '_alpha_color', '_size_h') # Cancelar animaciones previasAnimation.cancel_all(self, 'alpha_color') # Cancelar animaciones previas
         # Define las variables de base
         self._pos_y = self._pos_y + self._size_h
         self._size_h = 0

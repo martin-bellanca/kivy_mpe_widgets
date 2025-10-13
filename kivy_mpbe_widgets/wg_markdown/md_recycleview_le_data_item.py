@@ -49,8 +49,9 @@ class DataThemed:    # Nuevo
             anim_type (str, optional): Tipo de Animacion a implementar en la activación. Defaults to "point".
         """
         self.alpha_background = alpha_background
-        self.anim = anim
-        self.anim_type = anim_type
+        # self.anim = anim
+        # self.anim_type = anim_type
+        # ESTE PAQUETE HACE FALTA?
 
 
 class DataShow:    # Nuevo
@@ -63,16 +64,16 @@ class DataShow:    # Nuevo
 class DataState:  # Nuevo
     def __init__(self, selectable:bool=True, selected:bool=False,
                  editable:bool=True, focused:bool=True, active:bool=False,
-                 mode_editor:bool=False, cursor:tuple=(0,0), hide:bool=False):
+                 mode_editor:bool=False, cursor_pos:tuple=(0,0), hide:bool=False):
         # self.index = index              # Indice de la linea en Data. En layout.children el indice es inverso
         # self.focused = focused          # Define si el item puede tener el foco
-        self.editable = editable        # Define si el item se puede editar
-        self.selectable = selectable    # Define si el item se puede seleccionar
-        self.selected = selected        # Define si el item esta seleccionado (puede haber muchos items selecionados)
-        self.active = active            # Define si el item esta activo
-        self.mode_editor = mode_editor  # Define si esta en modo edicion
-        self.editor_cursor = cursor     # Posicion del cursor en el editor
-        self.hide = hide                # Indica si la linea esta oculta
+        self.editable = editable                # Define si el item se puede editar
+        self.selectable = selectable            # Define si el item se puede seleccionar
+        self.selected = selected                # Define si el item esta seleccionado (puede haber muchos items selecionados)
+        self.active = active                    # Define si el item esta activo
+        self.mode_editor = mode_editor          # Define si esta en modo edicion
+        self.editor_cursor_pos = cursor_pos     # Posicion del cursor en el editor
+        self.hide = hide                        # Indica si la linea esta oculta
 
 
 # Clase Data Item -------------------------------------------------------------

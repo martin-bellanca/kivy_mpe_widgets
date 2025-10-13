@@ -198,7 +198,7 @@ class MDLineEditor(FloatLayout):
     **Events:**
 
         """
-    mode_editor = BooleanProperty(defaultvalue=False)
+    # mode_editor = BooleanProperty(defaultvalue=False)
     line = ObjectProperty(baseclass=MDLine, defaultvalue=MDLine(md_text='', prev_line=None, next_line=None))
     # TODO: cambiar nombre a md_line
 
@@ -222,6 +222,7 @@ class MDLineEditor(FloatLayout):
         self.add_widget(self.md_editor)
         # self.md_editor.text = self.line.md_text
         # print(self.md_editor.font_size)
+        self.mode_editor = False
         self.md_editor.bind(text=self.on_txt_change)
         non_focus = compose_dict(kwargs, 'non_focus', bool, False)
         if not non_focus:
@@ -241,6 +242,7 @@ class MDLineEditor(FloatLayout):
     # Properties -----------------------------------------------
     def _set_md_text(self, md_text):
         self.line.md_text = md_text
+        self.update_type()
     def _get_md_text(self):
         return self.line.md_text
     md_text = property(_get_md_text, _set_md_text)
@@ -262,8 +264,12 @@ class MDLineEditor(FloatLayout):
     _opacity_editor = property(_get_opacity_editor, _set_opacity_editor)
 
     # Private Functions ----------------------------------------
-    def md_editor_focus(self):
+    def md_editor_focus(self, cursor:tuple=None):
         self.md_editor.focus = True
+        self._mdtext_back = self.md_text
+        if cursor is not None: self.cursor = cursor
+
+        
 
     def _update_height(self):
         if self.active_label and self.active_label.height > 0:
@@ -344,8 +350,8 @@ class MDLineEditor(FloatLayout):
     def on_key_up(self, window, keycode, scancode):
         # print("MDLineEditor->_on_keyboard_up")
         # Detectar si se presionó la tecla Escape
-        if self.mode_editor == True:
-            self._mdtext_back = self.active_label.md_text
+        if self.mode_editor is True:
+            # self._mdtext_back = self.active_label.md_text
             if keycode == 27:  # Escape
                 self.mode_editor=False
                 self.active_label.md_text = self._mdtext_back
@@ -355,12 +361,10 @@ class MDLineEditor(FloatLayout):
 
     def on_focus(self, instance, value):
         # print("MDLineEditor->on_focus")
-        if not value:  # Cuando pierde el foco
-            self.mode_editor = False
-            # return True
+        if value is True:  # Cuando pierde el foco
+            self._mdtext_back = self.active_label.md_text
         else:  # Cuando gana el foco
-            # self.editor_on_return = True
-            pass
+            self.mode_editor = False
 
     
 

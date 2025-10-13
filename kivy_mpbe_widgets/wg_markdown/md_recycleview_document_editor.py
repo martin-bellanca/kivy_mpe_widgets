@@ -1176,7 +1176,7 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         self.active_index = -1
         self.active_view = None
         self._cursor = (1000, -1)  # es una tupla (columna, fila)
-        self._mode_editor = True
+        self._mode_editor = False
         self._old_text_line = None  # Guarda el texto de la linea antes de editarla
         # Altura del layout de items
         # Nota: Hay que mantenerla actualizada con el agregado, borrado y cambio de tamañano del item en edicion
@@ -1291,16 +1291,11 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
                 return view
         return None
 
-    # OK data item
-    # def active_md_editor(self):
-    #     item = self.item_from_index(self.active_index)
-    #     if item:
-    #         return item.wg_line_editor.md_editor if self.active_index > -1 else None
-    #     else:
-    #         None
-
-
-
+    def active_md_editor(self):  # No sacar
+        if self.active_view is not None and self.active_index > -1:
+            return self.active_view.wg_line_editor  # .md_editor
+        else:
+            None
 
     '''Funciones de Selección de Items ----------------------------------------'''
     def select_from_item(self, item:MDDocumentLineEditor, anim:bool=False, anim_type:str="point", cursor_pos:tuple=None):  # TODO: cambiar a select_from_item
@@ -1648,22 +1643,9 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         self.apply_data_items()
         self.refresh_from_data()
 
-    def in_editing(self, value:bool, anim:bool=False):
-        if not value and self._mode_editor and self._old_text_line != self.active_md_editor().text:
-            self.undo_manager.add(_TextModifiedCommand(self, self.active_index, self._old_text_line, self.active_md_editor().text))
-        # self._mode_editor =value
-        if -1 < self.active_index < len(self.data):
-            self.data_items[self.active_index] ['mode_editor'] = value
-            self.data_items[self.active_index]['cursor'] = self._cursor
-            self.data_items[self.active_index]['start_anim'] = anim
-            if value:
-                self._old_text_line = self.data_items[self.active_index]['md_line'].md_text
-            # Actualiza el View
-            self.active_view.di_state.mode_editor = value
-            self.active_view.animate_editor(value)
-        else:
-            self.active_index = -1
-            self.active_view = None
+    # def in_editing(self, view:MDDocumentLineEditor, index:int, value:bool, anim:bool=False):
+    #     if value is not True and self._mode_editor and self._old_text_line != self.active_md_editor().text:
+    #         self.undo_manager.add(_TextModifiedCommand(self, self.active_index, view.old_text_line, self.active_md_editor().text))
 
     # def update_numlines(self):  # No Hace Falta. Probar sacar
     #     for ii, line in enumerate(self._md_lines):
@@ -1677,14 +1659,9 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
             for chview in self.layout.children:
                 chview.graphic_hotlight.show(False)
                 if self.active_index != chview.index:
-                    chview.mode_editor = False
-                    chview.wg_line_editor.md_editor.opacity = 0.0
-                    chview.graphic_select.show(False)
-                    chview.di_state.selected = False
-                    chview.di_state.active = False
-                # else:
-                #     chview.graphic_select.show(False)
-        
+                    chview.activate(value=False, cursor=None, anim=False)
+                else:
+                    chview.activate(value=True, cursor=None, anim=False)
 
         if self.on_scroll_event:
             self.on_scroll_event(self)  # Disparar el evento de scroll sobre el item en edicion
@@ -1733,7 +1710,255 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
 
     def _on_keyboard_down(self, window, keycode, modifier, char, special_keys):
         print("MDDocumentEditor._on_keyboard_up Codigo de Teclas", keycode, modifier, char, special_keys)
-        pass
+        # print(f'  default_h= {self.layout.default_height}, layout= {self.layout}')
+        # print(f'  ul item.y= {item.y}')
+        # print(f'  h Layout= {self.layout.height}, h layout manager= {self.layout_manager.height}')
+        # print(f'   UID:{self.uid}')
+        if MDDocumentEditor.instance_focus == self and self.theme.level_render != 'high':
+            # print(f'    Instancia con Foco y nivel bajo')
+            md_editor = self.active_md_editor()
+            active_view = self.active_view
+            in_edition = active_view.di_state.mode_editor if active_view is not None else False  ## TODO: Usar un if general para ejecutar los if con esta condicion
+            self._cursor = md_editor.cursor if md_editor is not None else (0, 0)  # self.item_from_index(self._active_index).wg_line_editor.md_editor.cursor
+            
+            # Flecha arriba + Ctrl + Shift, mueve el bloque hacia arriba
+            if keycode == 273 and all(kk in special_keys for kk in ['shift', 'ctrl']):  # Mueve el bloque hacia arriba
+                print('  Flecha Arriba con Ctrl y Shift (mueve el bloque hacia arriba)')
+                # Se supone que la lista es continua sin seleccion intercalada.
+                # En este contecto borro la lines superior a la seleccion y la pego debajo de la seleccion
+                ix_actual = min(self._selected_indexs) - 1
+                ix_new = max(self._selected_indexs)
+                if ix_actual > -1:
+                    self.undo_manager.execute(_MoveLinesCommand(self, ix_actual, ix_new))
+            
+            # Flecha abajo + Ctrl + Shift, mueve el bloque hacia abajo
+            elif keycode == 274 and all(kk in special_keys for kk in ['shift', 'ctrl']):  # Mueve el bloque hacia abajo
+                # Se supone que la lista es continua sin seleccion intercalada.
+                # En este contecto borro la lines inferior a la seleccion y la pego sobre la seleccion
+                ix_new = min(self._selected_indexs)
+                ix_actual = max(self._selected_indexs) + 1
+                if ix_actual < len(self.data):
+                    self.undo_manager.execute(_MoveLinesCommand(self, ix_actual, ix_new))
+            
+            # Flecha arriba + Ctrl, mueve al Título anterior
+            elif keycode == 273 and 'ctrl' in special_keys:  # Flecha arriba + Ctrl, mueve al Título anterior
+                print('  Flecha Arriba con Ctrl (mueve al Título anterior)')
+                data = self.get_previus_data_title()
+                if data:
+                    self.unactivate()  # Desactiva el modo edicion
+                    self.activate_from_data(data, anim=True)  # Activa el item
+                    self.scroll_to_index(data['index'])
+
+            # Flecha abajo + Ctrl, mueve al Siguiente Título
+            elif keycode == 274 and 'ctrl' in special_keys:  # Flecha abajo + Ctrl, mueve al Siguiente Título
+                print('  Flecha Abajo con Ctrl (mueve al Siguiente Título)')
+                data = self.get_next_data_title()
+                if data:
+                    self.unactivate()  # Desactiva el modo edicion
+                    self.activate_from_data(data, anim=True)  # Activa el item
+                    self.scroll_to_index(data['index'])
+
+
+            # Ctrl + C, Copiar linea/s seleccionada
+            elif not in_edition and char == 'c' and 'ctrl' in special_keys:  # Ctrl + C, Copiar
+                # print(f'texto seleccionado: {md_editor.selection_text}')
+                # Crea el texto a copiar
+
+                # SACAR not in_edition and Y VERIFICAR SI EL TEXTO EN EDICION LA SELECCION ES 0 COPIA LA LINEA SINO RETORNA TRUE
+
+                if not in_edition or len(md_editor.selection_text) == 0:
+                    cp_txt = ''
+                    for ii in range(0, len(self._selected_indexs)-1):
+                        cp_txt += self._md_lines[self._selected_indexs[ii]].md_text + '\n'
+                    cp_txt += self._md_lines[self._selected_indexs[len(self._selected_indexs)-1]].md_text
+                    Clipboard.copy(cp_txt)
+                    return True
+                else:
+                    return False
+            
+            # Ctrl + V, Pegar linea/s en la papelera
+            elif not in_edition and char == 'v' and 'ctrl' in special_keys:  # Ctrl + V, Pegar
+                # print('  Ctrl + v')
+                pasted_text = Clipboard.paste()
+                if isinstance(pasted_text, str):  # Verifica compatibilidad del texto
+                    pasted_list = pasted_text.splitlines(keepends=False)
+                    print(f'  Lista de lineas: {pasted_list}')
+                    # Define el punto de inserción
+                    u_line = len(self._md_lines)
+                    if not in_edition or len(pasted_list) > 1:
+                        ix_i = self.active_index + 1 if self.active_index > -1 and self.active_index < u_line else u_line
+                        print(f'    ix_i= {ix_i}, u line= {u_line}')
+                        # Inserta las lineas
+                        self.undo_manager.execute(_InsertLinesCommand(self, self.active_index, pasted_list))
+
+                        # for id, txt in enumerate(pasted_list, start=0):
+                        #     if ix_i < u_line:
+                        #         self.insert_line(ix_i+id, txt)
+                        #     else:
+                        #         self.append_line(txt)
+                        return True
+                    else:
+                        return False
+            
+            # Ctrl + X, Cortar linea/s seleccionada
+            elif not in_edition and char == 'x' and 'ctrl' in special_keys:  # Ctrl + X, Cortar
+                # Corta la seleccion
+                print('  Ctrl + x')
+                # Crea el texto a copiar
+                if not in_edition or len(md_editor.selection_text) == 0:
+                    cp_txt = ''
+                    for ii in range(0, len(self._selected_indexs) - 1):
+                        cp_txt += self._md_lines[self._selected_indexs[ii]].md_text + '\n'
+                        #self.remove_line(self._selected_indexs[ii])
+                    cp_txt += self._md_lines[self._selected_indexs[len(self._selected_indexs) - 1]].md_text
+                    # self.remove_line(self._selected_indexs[len(self._selected_indexs) - 1])  TODO UNDO REMOVE_LINE
+                    self.undo_manager.execute(_RemoveLinesCommand(self, self._selected_indexs))
+                    Clipboard.copy(cp_txt)
+                    return True
+                else:
+                    return False
+            
+            # Ctrl + Z, Deshacer ultima accion
+            elif not in_edition and char == 'z' and 'ctrl' in special_keys:  # Ctrl + Z, Deshacer
+                self.undo_manager.undo()
+                return True
+            
+            # Ctrl + Y, Rehacer ultima accion
+            elif not in_edition and char == 'y' and 'ctrl' in special_keys:  # Ctrl + Y, Rehacer
+                self.undo_manager.redo()
+                return True
+            
+            # Ctrl + A, Selecciona todo el documento
+            elif keycode == 65 and 'ctrl' in special_keys:  # Ctrl + A, Selecciona todo el documento
+                print('  Ctrl + A')
+                self.unactivate()  # Desactiva el modo edicion
+                self._selected_indexs.clear()  # Limpia la lista de seleccionados
+                for ii in range(len(self.data)):
+                    self._selected_indexs.append(ii)
+                for data_item in self.data:
+                    data_item['selected'] = True
+                self.refresh_from_data()  # Actualiza el view
+                self.activate_from_index(len(self.data)-1, anim=False)  # Activa el ultimo item
+                self.in_editing(False)  # Desactiva el modo edicion
+                return True
+
+            # Flecha arriba + Shift, Extiende la seleccion hacia la linea de arriba
+            elif keycode == 273 and 'shift' in special_keys and self.active_index != 0:  # Extiende la seleccion hacia la linea de arriba
+                self.in_editing(False)  # Inhabilita el modo edicion
+                self.active_index -= 1  # Mueve el item activado
+                # Agrega o borra de la lista de seleccionados
+                if self.active_index in self._selected_indexs:  # Des-selecciona
+                    self.unselect_index(self.active_index+1, anim=False)
+                else:
+                    self.select_index(self.active_index, anim=False)
+                    item = self.item_from_index(self.active_index)
+                    if self.item_scroll_pos_y(item) + item.height > self.y + self.height:  # Mover el item a la base del RecycleView
+                        self.scroll_y += item.height / (self.layout_manager.height - self.height)
+            
+            # Flecha abajo + Shift, Extiende la seleccion hacia la linea de abjajo
+            elif keycode == 274 and 'shift' in special_keys and self.active_index != len(self.data)-1:  # # Extiende la seleccion hacia la linea de abajo
+                self.in_editing(False)  # Inhabilita el modo edicion
+                self.active_index += 1  # Mueve el item activado
+                # Agrega o borra de la lista de seleccionados
+                if self.active_index in self._selected_indexs:  # Des-selecciona
+                    self.unselect_index(self.active_index-1, anim=False)
+                else:
+                    self.select_index(self.active_index, anim=False)
+                    item = self.item_from_index(self.active_index)
+                    if self.item_scroll_pos_y(item) < 0:  # Mover el item a la base del RecycleView
+                        self.scroll_y -= item.height / (self.layout_manager.height - self.height)
+            
+            # Flecha Arriba, Activa la linea de arriba
+            elif keycode == 273 and self.active_index != 0:  # Flecha Arriba
+                print(f'  Flecha Arriba')
+                # TODO: Verificar si esta presionado SHIFT o CTRL y seleccionar el rango
+                self.active_to_previus_item()
+            
+            # Flecha Abajo, Activa la linea de abajo
+            elif keycode == 274 and self.active_index != len(self.data)-1:  # Flecha Abajo
+                # TODO: Verificar si esta presionado SHIFT o CTRL y seleccionar el rango
+                self.active_to_next_item()
+            
+            # Flecha Derecha y cursor al final de linea, activa la linea de abajo y mueve el cursor al principio de la linea
+            elif keycode == 275 and self.active_index != len(self.data)-1 and self._cursor[0] == len(md_editor.text):  # Flecha Derecha
+                print('  Flecha Derecha')
+                self.active_to_next_item(cursor_pos=(0, 0))
+            
+            # Flecha Izquierda y cursor al principio de linea, activa la linea de arriba y mueve el cursor al final de la linea
+            elif keycode == 276 and self.active_index != 0 and self._cursor[0] == 0:  # Flecha Izquierda
+                print(f'  Flecha izquierda, active index= {self.active_index}')
+                cur_x = len(self.data[self.active_index-1]['md_line'].md_text)
+                self.active_to_previus_item(cursor_pos=(cur_x, 0))
+            
+            # F2, Activa o desactiva el modo edicion
+            elif keycode == 283:  # Tecla F2
+                self._mode_editor = not(self._mode_editor)
+                self.in_editing(self._mode_editor)
+                
+                return True
+            
+            # Escape, desactiva el modo edicion sin guardar los cambios
+            
+            elif keycode == 27:  # Tecla Escape  # OK 25-10
+                md_editor.md_text = md_editor._mdtext_back
+                active_view.show_editor(show=False, anim=False)  # Desactiva el modo edicion
+
+            # Enter o Intro, genera un salto de linea
+            elif in_edition and (keycode == 13 or keycode == 271):  # Tecla Enter o Intro
+                self.undo_manager.execute(_EnterInEditionCommand(self))
+            
+            # Backspace con cursor al inicio de linea, fusiona la linea con la linea de arriba
+            elif keycode == 8 and self.active_index != 0 and self._cursor[0] == 0: # Tecla Backspace
+                print('  Tecla Backspace -> Fusiona la linea con la linea de arriba')
+                
+                # text = md_editor.text
+                # print(f'    text: {text}')
+                # self.remove_line(self._active_index)
+                # cpos = len(self._md_lines[self._active_index-1].md_text)
+                # self._md_lines[self._active_index -1].md_text += text
+                # self.activate_from_index(self._active_index-1, cursor_pos=(cpos, 0))
+
+                self.undo_manager.execute(_BackspaceOnStartLineCommand(self))
+            
+            # Suprimir (Delete) con cursor al final de linea en modo edicion, fusiona la linea con la linea de abajo
+            elif keycode == 127 and self.active_index != len(self.data)-1 and self._cursor[0] == len(md_editor.text) \
+                    and len(self._selected_indexs) == 1 and in_edition:  # Tecla Suprimir (Delete) en modo edicion
+                print('  Tecla Suprimir -> Fusiona la linea con la linea de abajo')
+                # cur_pos = len(self._md_lines[self._active_index].md_text)
+                # self._md_lines[self._active_index].md_text += self._md_lines[self._active_index+1].md_text  # agrega el texto de la linea inferior
+                # self.data[self._active_index]['cursor'] = (cur_pos, 0)  # Posiciona el cursor
+                # self.remove_line(self._active_index+1)  # borra la linea de abajo
+                # self.data[self._active_index+1]['md_line'].num_line = self.data[self._active_index]['md_line'].num_line + 1  # actualiza nro linea, prev y next
+            
+                self.undo_manager.execute(_DeleteOnEndLineCommand(self))
+
+            # Suprimir (Delete) en modo no edicion, borra la linea/s seleccionada
+            elif keycode == 127 and len(self._selected_indexs) > 0 and not in_edition:  # Tecla Suprimir en modo no edicion
+                self.undo_manager.execute(_RemoveLinesCommand(self, self._selected_indexs))
+                # self.data[self._selected_indexs[len(self._selected_indexs)-1]]['selected'] = True
+            
+            # Page Up, desplaza la vista hacia arriba
+            elif keycode == 280:  # tecla page up
+                print('  Tecla PageUp')
+                delta = len(self.layout.children) - 2
+                new_center_ix = self.layout.children[int(delta / 2)].index - delta   #este hay que sacarlo
+                if new_center_ix > 0:
+                    self.scroll_y += self.height / (self.layout_manager.height - self.height)
+                else:
+                    self.scroll_y = 1
+            
+            # Page Down, desplaza la vista hacia abajo
+            elif keycode == 281:  # tecla page down
+                # print('  Tecla PageDown')
+                delta = len(self.layout.children) - 2
+                new_center_ix = self.layout.children[int(len(self.layout.children)/2)].index + delta
+                if new_center_ix < len(self.data):
+                    self.scroll_y -= self.height / (self.layout_manager.height - self.height)
+                else:
+                    self.scroll_y = 0
+            
+            # Si no se reconoce la tecla, retorna False para que el evento no se consuma
+            return False
 
         
     
@@ -1743,38 +1968,37 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         self.hotlight = active
 
     def handle_touch_left_up_event(self, index:int, view:MDDocumentLineEditor, touch):
+        """
+        Manejador del evento on_touch_up de MDDocumentLineEditor
+        Nota: La activacion del view se realiza desde MDDocumentLineEditor
+        Args:
+            index: indice de data del view a activar
+            view: view a activar
+        """
         # Desactiva el resto de los Items
+        # Des-Selecciona todos y Selecciona el Activo
+        if self.active_view is not None:
+            self.active_view.activate(value=False, cursor=None, anim=True, anim_type='fade')
+        if self.selected_indexs is not None:
+            for ix in self.selected_indexs:
+                self.data[ix]['state'].selected = False
+                self.data[ix]['state'].active = False
+            self.selected_indexs.clear()
+            self.selected_indexs.append(index)
         for chview in self.layout.children:
-            if self.active_index == chview.index:
-                chview.graphic_select.animate_fade(False)
-                chview.di_state.selected = False
-                chview.animate_editor(False)
+            if self.active_index != chview.index:
+                chview.activate(value=False, cursor=None, anim=False)
             # else:
             #     chview.graphic_select.show(False)
-            chview.di_state.active = chview.di_state.selected = (chview.index == index)
         # Asigna el Item Activo
         self.active_index = index
         self.active_view = view
-        # Des-Selecciona todos y Selecciona el Activo
-        self.selected_indexs.clear()
-        self.selected_indexs.append(index)
-        # Activa la animación de selección
-        view.graphic_select.animate_fade(True)
-        # Activa el Modo Edicion
-        if self._mode_editor is True:
-            # Obtiene la posición del cursor del texto en el lugar del click del mouse
-            self._cursor = view.wg_line_editor.md_editor.get_cursor_from_xy(*self.to_local(*touch.pos))
-            self.in_editing(True)
         # Lanza el evento de Activacion 
         ActivateItemEventDispatcher.do_something(self, view, index)
 
 
         
 
-
-
-#VER ESTO Y RECODIFICAR
-# Index indica la posicion en data. Para data_items es nro de linea -1 desde md_line
 
 # --- Funciones Undo  ---------------------------------------------------------------------------
 class _RemoveLinesCommand(Command):
