@@ -163,7 +163,8 @@ class MDDocumentLineEditor(RecycleDataViewBehavior, ThemeWidget, HotlightEventDi
         self._state_background = None
         self.old_text_line = None  # Back del texto de la linea
         # --- Variables de estado propio de la clase ----------
-        self._anim_editor = False
+        # self._anim_editor = False
+        self._cursor = (1000, 0)
         # --- Variables de Data Item --------------------------
         # self.index = -1
         self.md_line = MDLine(md_text="", prev_line=None, next_line=None)
@@ -349,25 +350,34 @@ class MDDocumentLineEditor(RecycleDataViewBehavior, ThemeWidget, HotlightEventDi
     # +- Funciones de visualización -----------------------------------------------------
     def show_editor(self, show:bool, anim:bool, cursor:tuple=None):
         """Muestra o esconde el editor el editor"""
+        
+        # HACER SEGUIMIENTO DESDE ACA
+        
         self.di_state.mode_editor = show
-        self.wg_line_editor.mode_editor =show
         if anim is True:
-            self.di_state.mode_editor = show
-            op = 0.95 if show else 0.0
-            dur = self.graphic_select.duration / (2 if show else 3)
-            self._anim_editor = True
-            anim = Animation(opacity=op, d=dur, t='out_quad')
-            # anim.bind(on_complete=lambda instance, widget: setattr(self, '_anim_editor', False))  # Desactiva el seguimiento de la animacion.
-            anim.start(self.wg_line_editor.md_editor)
+            self.wg_line_editor.show_anim_editor(show, cursor)
         else:
-            op = 0.95 if show is True else 0.0
-            self.wg_line_editor.md_editor.opacity = op
-        if show is True:
-            # TODO: Hay que mantener la posicion del cursor
-            self.old_text_line = self.md_line.md_text
-            cur = cursor if cursor is not None else self.di_state.editor_cursor_pos
-            self.wg_line_editor.md_editor_focus(cur)
-            # Clock.schedule_once(lambda dt: self.wg_line_editor.md_editor_focus(cur), 0.5)
+            self.wg_line_editor.show_editor(show, cursor)
+
+
+        # self.wg_line_editor.mode_editor =show
+        # self.di_state.mode_editor = show
+        # if anim is True:
+        #     op = 0.95 if show else 0.0
+        #     dur = self.graphic_select.duration / (2 if show else 3)
+        #     # self._anim_editor = True
+        #     anim = Animation(opacity=op, d=dur, t='out_quad')
+        #     # anim.bind(on_complete=lambda instance, widget: setattr(self, '_anim_editor', False))  # Desactiva el seguimiento de la animacion.
+        #     anim.start(self.wg_line_editor.md_editor)
+        # else:
+        #     op = 0.95 if show is True else 0.0
+        #     self.wg_line_editor.md_editor.opacity = op
+        # if show is True:
+        #     # TODO: Hay que mantener la posicion del cursor
+        #     self.old_text_line = self.md_line.md_text
+        #     cur = cursor if cursor is not None else self.di_state.editor_cursor_pos
+        #     self.wg_line_editor.md_editor_focus(cur)
+        #     # Clock.schedule_once(lambda dt: self.wg_line_editor.md_editor_focus(cur), 0.5)
 
     def select(self, value:bool, anim:bool, anim_type:str='fade'):
         """Seleciona o des-seleciona el view"""
@@ -384,10 +394,12 @@ class MDDocumentLineEditor(RecycleDataViewBehavior, ThemeWidget, HotlightEventDi
 
     def activate(self, value:bool, show_editor:bool=False, cursor:tuple=None, anim:bool=True, anim_type:str='fade'):
         """Activa o Desactiva el view (anima la visualización)"""
+        print(f"Activate, index={self.index}, value{value}, show_editor={show_editor}, anim={anim}")
+        
         # Selecciona --------------------------------------
         self.select(value, anim, anim_type)
         # Modo Edicion ------------------------------------
-        if show_editor is True: self.show_editor(value, anim, cursor)
+        self.show_editor(show_editor, anim, cursor)
         # Activacion --------------------------------------
         self.di_state.active = value
         if anim is True:
@@ -440,6 +452,12 @@ class MDDocumentLineEditor(RecycleDataViewBehavior, ThemeWidget, HotlightEventDi
         self.graphic_select.show(self.di_state.selected)
         self.graphic_active.show(self.di_state.active)
 
+        # + Actualiza el view ------------------------------------
+        if self.di_state.active is not True:
+            self.wg_line_editor.show_editor(False)
+        else:
+            self.wg_line_editor.show_editor(True, cursor=self._cursor)
+
         return super(MDDocumentLineEditor, self).refresh_view_attrs(rv, index, data)
     
 
@@ -469,8 +487,12 @@ class MDDocumentLineEditor(RecycleDataViewBehavior, ThemeWidget, HotlightEventDi
                 # print('>--- RecycleListView.on_touch_down Boton Izquierdo --------------------------')
                 # print(f'>---- Item a Seleccionar: index={self.index}, linea={self.md_line.md_text}')
                 self.parent.parent.handle_touch_left_up_event(index=self.index, view=self, touch=touch)  # Llama al manejador de RecycleView
-                cursor = self.wg_line_editor.md_editor.get_cursor_from_xy(*self.to_local(*touch.pos))  # Obtiene la posicion del cursor
-                self.activate(value=True, show_editor=True, cursor=cursor, anim=True, anim_type='fade')  # Activa el view actual
+                
+                print(f"active={self.di_state.active}, editable={self.di_state.editable} ")
+
+                self.di_state.active = True
+                self._cursor = self.wg_line_editor.md_editor.get_cursor_from_xy(*self.to_local(*touch.pos))  # Obtiene la posicion del cursor
+                self.activate(value=True, show_editor=True, cursor=self._cursor, anim=True, anim_type='fade')  # Activa el view actual
                 return True
             touch.ungrab(self)
 

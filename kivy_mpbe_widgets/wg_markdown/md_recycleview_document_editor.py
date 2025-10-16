@@ -1659,10 +1659,10 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
             for chview in self.layout.children:
                 chview.graphic_hotlight.show(False)
                 if self.active_index != chview.index:
-                    chview.activate(value=False, cursor=None, anim=False)
+                    chview.activate(value=False, show_editor=False, cursor=None, anim=False)
                 else:
-                    chview.activate(value=True, cursor=None, anim=False)
-
+                    chview.activate(value=True, show_editor=self._mode_editor, cursor=None, anim=False)
+                self.active_view = self.item_from_index(self.active_index)
         if self.on_scroll_event:
             self.on_scroll_event(self)  # Disparar el evento de scroll sobre el item en edicion
         super(RecycleView, self).on_touch_up(touch)
@@ -1890,10 +1890,11 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
                 cur_x = len(self.data[self.active_index-1]['md_line'].md_text)
                 self.active_to_previus_item(cursor_pos=(cur_x, 0))
             
-            # F2, Activa o desactiva el modo edicion
+            # F2, Activa o desactiva el modo edicion - OK 25-10
             elif keycode == 283:  # Tecla F2
+                print("    F2 Presionado")
                 self._mode_editor = not(self._mode_editor)
-                self.in_editing(self._mode_editor)
+                self.active_view.show_editor(show=self._mode_editor, anim=True)
                 
                 return True
             
@@ -1977,8 +1978,9 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         """
         # Desactiva el resto de los Items
         # Des-Selecciona todos y Selecciona el Activo
-        if self.active_view is not None:
-            self.active_view.activate(value=False, cursor=None, anim=True, anim_type='fade')
+        # if self.active_view is not None:
+        #     self.active_view.activate(value=False, cursor=None, anim=True, anim_type='fade')
+
         if self.selected_indexs is not None:
             for ix in self.selected_indexs:
                 self.data[ix]['state'].selected = False
@@ -1993,6 +1995,7 @@ class MDDocumentEditor(FocusBehavior, ThemableBehavior, RecycleView,
         # Asigna el Item Activo
         self.active_index = index
         self.active_view = view
+        self._mode_editor = view.di_state.mode_editor
         # Lanza el evento de Activacion 
         ActivateItemEventDispatcher.do_something(self, view, index)
 

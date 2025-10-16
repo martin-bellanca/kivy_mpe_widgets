@@ -219,10 +219,11 @@ class MDLineEditor(FloatLayout):
         self.md_editor = MDLineTextInput(background_color=(0.8, 0.8, 0.8, 0.80),
                                           size_hint_y=None, pos_hint={'x': 0, 'y': 0},
                                           opacity=0.0)  # , font_size=12
-        self.add_widget(self.md_editor)
+        # self.add_widget(self.md_editor)
         # self.md_editor.text = self.line.md_text
         # print(self.md_editor.font_size)
         self.mode_editor = False
+        self.editor_cursor_pos = (0, 1000)
         self.md_editor.bind(text=self.on_txt_change)
         non_focus = compose_dict(kwargs, 'non_focus', bool, False)
         if not non_focus:
@@ -300,7 +301,7 @@ class MDLineEditor(FloatLayout):
         self.md_editor.text = self.line.md_text
         # self._update_height()
 
-    # funtions events ---------------------------------------------------
+    # funtions events ---------------------------------------------------------
     def on_resize_self(self, instance, value):
         self._update_height()
 
@@ -314,6 +315,43 @@ class MDLineEditor(FloatLayout):
 
     def on_line_type(self, instance, value):
         self.update_type()
+
+    # Funciones del Editor ----------------------------------------------------
+    def show_editor(self, show:bool, cursor:tuple=None):
+        if show is True:
+            self.mode_editor = True
+            if not(self.md_editor in self.children):
+                self.add_widget(self.md_editor)
+            self.md_editor.opacity = 0.95
+            self.old_text_line = self.md_text
+            cur = cursor if cursor is not None else self.editor_cursor_pos
+            self.md_editor_focus(cur)
+        else:
+            self.mode_editor = False
+            self.remove_widget(self.md_editor)
+
+    def show_anim_editor(self, show:bool, cursor:tuple=None):
+        if show is True:
+            self.mode_editor = True
+            if not(self.md_editor in self.children):
+                self.add_widget(self.md_editor)
+            anim = Animation(opacity=0.95, d=1.0, t='out_quad')
+            # anim.bind(on_complete=lambda instance, widget: setattr(self, '_anim_editor', False))  # Desactiva el seguimiento de la animacion.
+            anim.start(self.md_editor)
+            self.old_text_line = self.md_text
+            cur = cursor if cursor is not None else self.editor_cursor_pos
+            self.md_editor_focus(cur)
+        else:
+            self.mode_editor = False
+            anim = Animation(opacity=0.0, d=0.5, t='out_quad')
+            anim.bind(on_complete=lambda instance, widget: self.remove_widget(self.md_editor))  # Desactiva el seguimiento de la animacion.
+            anim.start(self.md_editor)
+
+
+    def opacity_editor(self, value:bool):
+        op = 0.95 if value is True else 0.0
+        self.md_editor.opacity = op
+
 
     # def on_mode_editor(self, instance, value):
     #     if value:  # and value == self.mode_editor:
