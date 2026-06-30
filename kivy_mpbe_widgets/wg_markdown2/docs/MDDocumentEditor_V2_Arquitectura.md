@@ -2,8 +2,15 @@
 
 **Versión:** 2.0
 **Basado en:** MDDocumentEditor_V5_Architecture.uxf
-**Fecha:** 2026-01-31
-**Estado:** Etapa I Completada
+**Fecha:** 2026-01-31 (revisado 2026-06-30)
+**Estado:** Etapa I Completada · Etapa II en progreso
+
+> ⚠️ **Documento de diseño original — parcialmente desactualizado.**
+> El código evolucionó respecto de este diseño en dos puntos estructurales:
+> 1. `LineState` **no es inmutable**: es un `EventDispatcher` con Kivy properties mutables que despachan eventos `on_<prop>` al cambiar (ver §3.1).
+> 2. `DocumentOperations` **no existe como clase separada**: sus operaciones viven dentro de `DocumentStateManager` (ver §3.2).
+>
+> Para el estado al día y el seguimiento de avances, ver el documento vivo **[arquitectura.md](arquitectura.md)** (diagramas Mermaid de clases, estados y roadmap).
 
 ---
 
@@ -131,32 +138,44 @@ class DocumentStateManager:
 
 #### LineState
 **Ubicación:** `core/line_state.py`
-**Responsabilidad:** Representación inmutable del estado de una línea
+**Responsabilidad:** Estado **mutable** de una línea, con eventos Kivy
+
+> Implementación real: `LineState` hereda de `EventDispatcher`. Las propiedades
+> son Kivy properties mutables; al cambiar despachan `on_<prop>` y el widget de
+> línea (que observa su `LineState`) reacciona. No usa `@dataclass(frozen=True)`
+> ni `with_changes()`.
 
 ```python
-@dataclass(frozen=True)
-class LineState:
+class LineState(EventDispatcher):
     """
-    Estado inmutable de una línea del documento.
-    Los cambios crean nuevas instancias via with_changes().
+    Estado mutable de una línea. Hereda de EventDispatcher para disparar
+    eventos al cambiar; MDDocumentLineEditor hace bind directo a estas props.
     """
 
-    # Referencia a datos
-    md_line: MDLine              # Referencia al modelo (no copia)
-    index: int                   # Índice en el documento
+    # Identificación
+    index = NumericProperty(0)
+    md_line = ObjectProperty(None, allownone=True)   # referencia al modelo
 
-    # Estado de UI
-    selected: bool = False       # Línea seleccionada
-    active: bool = False         # Línea activa (con foco)
-    editing: bool = False        # Modo edición activo
-    hotlight: bool = False       # Resaltado por hover
-    visible: bool = True         # Visible (pasa filtro)
-    cursor_pos: Tuple[int, int] = (0, 0)  # Posición del cursor
+    # Estado de UI (cada cambio dispara on_<prop>)
+    active = BooleanProperty(False)      # Línea activa (con foco)
+    editing = BooleanProperty(False)     # Modo edición activo
+    selected = BooleanProperty(False)    # Línea seleccionada
+    hotlight = BooleanProperty(False)    # Resaltado por hover
+    visible = BooleanProperty(True)      # Visible (pasa filtro)
 
-    # Métodos
-    def with_changes(**kwargs) -> LineState: ...
-    def get_md_text() -> str: ...        # Delegado a md_line
-    def get_line_type() -> MD_LINE_TYPE: ...  # Delegado a md_line
+    # Cursor (separado para Kivy properties)
+    cursor_col = NumericProperty(0)
+    cursor_row = NumericProperty(0)
+
+    # Geometría
+    height = NumericProperty(30.0)
+    y_position = NumericProperty(0.0)
+
+    # widget_type: clase de widget segun el tipo de linea (property + on_type_changed)
+
+    # Métodos delegados a md_line
+    def get_md_text(self) -> str: ...
+    def get_line_type(self) -> MD_LINE_TYPE: ...
 ```
 
 #### LineStateEvent
@@ -625,15 +644,24 @@ wg_markdown2/
 
 **Total código productivo Etapa I:** ~1,945 líneas
 
-### Etapa II - PENDIENTE
+### Etapa II - EN PROGRESO
+
+> Nota: `DocumentOperations` **no se implementó como capa separada**; sus
+> operaciones (activate_line, update_line_text, set_hotlight, insert/remove/move
+> line, etc.) ya viven en `DocumentStateManager`. Los widgets de línea editables
+> (`MDLineEditor`, `MDDocumentLineEditor`) **ya existen** en wg_markdown2 pero el
+> coordinador `MDDocumentEditor` todavía **no los usa** (renderiza labels de solo
+> lectura). El roadmap de incrementos está en [arquitectura.md](arquitectura.md).
 
 | Componente | Archivo | Estado |
 |------------|---------|--------|
-| DocumentOperations | `services/document_operations.py` | PENDIENTE |
-| MDDocumentLineEditor | `widgets/md_line_editor.py` | PENDIENTE (usar de wg_markdown) |
-| Navegación teclado | `widgets/md_document_editor.py` | PENDIENTE |
-| Filtros | `services/filter_service.py` | PENDIENTE |
-| Búsqueda | `services/search_service.py` | PENDIENTE |
+| Operaciones de estado (ex-DocumentOperations) | `core/state_manager.py` | INTEGRADO en StateManager |
+| MDLineEditor / MDDocumentLineEditor | `widgets/md_line_widgets.py`, `widgets/md_line_editor.py` | EXISTEN, sin conectar al coordinador |
+| Conectar widget de línea ↔ LineState (render bound) | `widgets/md_document_editor.py` | PENDIENTE (Incremento 0) |
+| Activación por click | `widgets/md_document_editor.py` | PENDIENTE (Incremento 1) |
+| Modo edición (editing → show_editor) | `widgets/md_line_editor.py` | PENDIENTE (Incremento 2) |
+| Navegación / teclado | `widgets/md_document_editor.py` | PENDIENTE (Incremento 3) |
+| Filtros / Búsqueda | a definir | PENDIENTE |
 | Animaciones | varios | PENDIENTE |
 
 ---
