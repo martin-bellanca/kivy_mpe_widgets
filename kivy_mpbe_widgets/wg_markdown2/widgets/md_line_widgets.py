@@ -53,7 +53,7 @@ from kivy_mpbe_widgets.theming import ThemableBehavior
 from kivy_mpbe_widgets.base_widgets import FrameUnfocused, FrameFocused
 from helpers_mpbe.markdown_document.md_document import MDDocument
 from helpers_mpbe.markdown_document import MD_LINE_TYPE
-from kivy_mpbe_widgets.wg_markdown.md_inputs import MDLineTextInput
+from kivy_mpbe_widgets.wg_markdown2.widgets.md_inputs import MDLineTextInput
 # helpers_mpbe --------------------------------------------------------------
 from helpers_mpbe.markdown_document.md_document import MDLine
 from helpers_mpbe.markdown_document.md_labels import MDTextLabel, MDTableLabel, MDSeparatorLabel

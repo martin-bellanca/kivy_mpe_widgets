@@ -211,7 +211,7 @@ class GSelectItem(InstructionGroup):
         # Variable del widget
         self._widget = widget
         # Variables de animación
-        self.duration = 1
+        self.duration = 0.3
         # Variables de posición
         self._pos_x = 0 
         # self._pos_y = 0  # Definida como propiedad
@@ -241,7 +241,7 @@ class GSelectItem(InstructionGroup):
     _size_h = property(_get_size_h, _set_size_h)
 
     def _set_pos_y(self, value):
-        self._gr_rectangle.pos = (self._widget.y, value)
+        self._gr_rectangle.pos = (self._widget.x, value)
     def _get_pos_y(self):
         return self._gr_rectangle.pos[1]
     _pos_y = property(_get_pos_y, _set_pos_y)
@@ -287,28 +287,38 @@ class GSelectItem(InstructionGroup):
         anim = Animation(_alpha_color=alpha, d=self.duration, t='out_quad')
         anim.start(self)
 
-    def animate_up(self):
+    def animate_up(self, selected:bool):
         """
         Anima la selección desde abajo hacia arriba.
         """
         # Animation.cancel_all(self, '_alpha_color', '_size_h') # Cancelar animaciones previas
         # Define las variables de base
-        self._size_h = 0
         self._alpha_color = 1
-        # Anima la altura
-        anim = Animation(_size_h=self._widget.height, d=self.duration, t='out_quad')
-        anim.start(self)
+        if selected is True:
+            # Anima la altura
+            self._size_h = 0
+            anim = Animation(_size_h=self._widget.height, d=self.duration, t='out_quad')
+            anim.start(self)
+        else:
+            pos_y = self._widget.y + self._widget.height
+            anim = Animation(_size_h=0.0, _pos_y=pos_y, d=self.duration, t='out_quad')
+            anim.start(self)
 
-    def animate_down(self):
+    def animate_down(self, selected:bool):
         """
         Anima la selección desde arriba hacia abajo.
         """
         # Animation.cancel_all(self, '_alpha_color', '_size_h') # Cancelar animaciones previasAnimation.cancel_all(self, 'alpha_color') # Cancelar animaciones previas
         # Define las variables de base
-        self._pos_y = self._pos_y + self._size_h
-        self._size_h = 0
         self._alpha_color = 1
-        # Anima la altura y la posicion y
-        anim = Animation(_size_h=self._widget.height, _pos_y=self._widget.y, d=self.duration, t='out_quad')
-        anim.start(self)
+        if selected is True:
+            pp = self._pos_y
+            self._pos_y = self._widget.y + self._widget.height
+            self._size_h = 0
+            # Anima la altura y la posicion y
+            anim = Animation(_size_h=self._widget.height, _pos_y=self._widget.y, d=self.duration, t='out_quad')
+            anim.start(self)
+        else:
+            anim = Animation(_size_h=0.0, d=self.duration, t='out_quad')
+            anim.start(self)
 

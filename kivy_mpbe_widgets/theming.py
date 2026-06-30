@@ -215,6 +215,7 @@ class ThemableBehavior():
         - flat (bool)None: Define el estilo flat para los widgets
         - opposite_colors (bool)None: Define el estilo de colores opuestos.
         """
+        # Inicializar atributos propios ANTES de super().__init__()
         self.theme = None
         if hasattr(App.get_running_app(), 'theme'):
             self.theme = App.get_running_app().theme

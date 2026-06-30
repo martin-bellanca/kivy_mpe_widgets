@@ -53,6 +53,12 @@ class DataThemed:    # Nuevo
         # self.anim_type = anim_type
         # ESTE PAQUETE HACE FALTA?
 
+    def to_dict(self):
+        return {
+            'alpha_background': self.alpha_background,
+            # 'anim': self.anim,
+            # 'anim_type': self.anim_type
+        }
 
 class DataShow:    # Nuevo
     def __init__(self, show_number_line:bool=True, show_infobar:bool=False, show_tree:bool=False):
@@ -60,24 +66,41 @@ class DataShow:    # Nuevo
         self.tree = show_tree
         self.infobar = show_infobar
 
+    def to_dict(self):
+        return {
+            'show_number_line': self.number_line,
+            'show_tree': self.tree,
+            'show_infobar': self.infobar
+        }
+
 
 class DataState:  # Nuevo
     def __init__(self, selectable:bool=True, selected:bool=False,
                  editable:bool=True, focused:bool=True, active:bool=False,
                  mode_editor:bool=False, cursor_pos:tuple=(0,0), hide:bool=False):
-        # self.index = index              # Indice de la linea en Data. En layout.children el indice es inverso
-        # self.focused = focused          # Define si el item puede tener el foco
+        """ Indice de la linea en data_lines sale de md_line.num_line que se actualiza solo."""
         self.editable = editable                # Define si el item se puede editar
         self.selectable = selectable            # Define si el item se puede seleccionar
         self.selected = selected                # Define si el item esta seleccionado (puede haber muchos items selecionados)
         self.active = active                    # Define si el item esta activo
         self.mode_editor = mode_editor          # Define si esta en modo edicion
-        self.editor_cursor_pos = cursor_pos     # Posicion del cursor en el editor
+        # self.editor_cursor_pos = cursor_pos   # Posicion del cursor en el editor
         self.hide = hide                        # Indica si la linea esta oculta
+        self.back_md_text = None                # Back del texto de la linea antes 
+
+    def to_dict(self):
+        return {
+            'selectable': self.selectable,
+            'selected': self.selected,
+            'editable': self.editable,
+            'active': self.active,
+            'mode_editor': self.mode_editor,
+            'hide': self.hide
+        }
 
 
 # Clase Data Item -------------------------------------------------------------
-class DataItemLineMDD():  # Modificado
+class DataLineMDD():  # Modificado
 
     def __init__(self, md_line:MDLine, data_themed:DataThemed, data_show:DataShow, data_state:DataState):
         """Devuelve el diccionario de MDDocumentEditor

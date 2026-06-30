@@ -1,0 +1,876 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<diagram program="umlet" version="15.1">
+  <zoom_level>10</zoom_level>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1080</x>
+      <y>30</y>
+      <w>460</w>
+      <h>660</h>
+    </coordinates>
+    <panel_attributes>bg=green
+*DocumentStateManager*
+*(ÚNICA FUENTE DE VERDAD)*
+--
+*Referencias*
++md_document: MDDocument  // ref externa
+-_line_states: List[LineState]
+-_active_index: Optional[int]
+-_selected_indices: Set[int]
+-_observers: List[Callable]
+--
+*Inicialización*
++set_document(md_document: MDDocument)
++initialize_states()
++clear_all()
+--
+*Acceso a Estados*
++get_state(index): LineState
++get_line_state(index): LineState
++get_md_line(index): MDLine
++get_active_index(): Optional[int]
++get_selected_indices(): Set[int]
++get_line_count(): int
+--
+*Modificación de Estados (emite eventos)*
++update_state(index, **changes)
++activate_line(index, enter_edit, cursor_pos)
++deactivate_line(index)
++select_line(index, multi)
++select_range(start, end)
++clear_selection()
++toggle_selection(index)
++set_hotlight(index, value)
++set_visibility(index, visible)
+--
+*Operaciones de Documento*
++insert_line(index, md_line): LineState
++remove_line(index)
++move_line(from_index, to_index)
++update_line_text(index, text)
+--
+*Observadores*
++subscribe(observer: Callable)
++unsubscribe(observer: Callable)
+-_emit_event(event: LineStateEvent)</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1080</x>
+      <y>750</y>
+      <w>460</w>
+      <h>540</h>
+    </coordinates>
+    <panel_attributes>bg=green
+*LineState*
+--
+*Referencia a datos*
++md_line: MDLine  // referencia, no copia
++index: int
+--
+*Estado de UI*
++selected: bool = False
++active: bool = False
++editing: bool = False
++hotlight: bool = False
++cursor_pos: Tuple[int, int] = (0, 0)
+--
+*Visibilidad y Grupos*
++visible: bool = True
++matched_search: bool = False
++group: str = 'visible'  # 'visible', 'hidden', 'filtered'
+--
+*Geometría*
++height: float = 30.0
++y_position: float = 0.0
+--
+*Animación y tema*
++anim_type: str = 'fade'  # Hace Falta??? 'fade' | 'slide_up' | 'slide_down' | 'expand_up' | 'expand_down'
++alpha_background: float = 0.0
+--
+*Sib-widgets*
++show_number_line: bool = True
++show_tree: bool = False
++show_infobar: bool = False
+--
+--
+*Métodos*
++with_changes(**kwargs): LineState
++get_md_text(): str  // delegado a md_line
++get_line_type(): MD_LINE_TYPE  // delegado
+--
+*Evento (emitido al cambiar)*
++on_state_changed: EventDispatcher</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1080</x>
+      <y>1340</y>
+      <w>460</w>
+      <h>170</h>
+    </coordinates>
+    <panel_attributes>bg=green
+*LineStateEvent*
+--
++index: int
++line_state: LineState
++old_state: LineState
++changed_attributes: Set[str]
++event_type: str  // 'changed', 'added', 'removed'
+--
++is_activation_change(): bool
++is_selection_change(): bool
++is_content_change(): bool</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>550</x>
+      <y>120</y>
+      <w>410</w>
+      <h>650</h>
+    </coordinates>
+    <panel_attributes>bg=orange
+*DocumentOperations*
+--
++state_manager: DocumentStateManager
+--
+*Líneas - Activación*
++activate_line(index, enter_edit, cursor_pos): bool
++deactivate_current(): bool
++toggle_edit_mode(): bool
+--
+*Líneas - CRUD*
++insert_line_below(index, text): int
++insert_line_above(index, text): int
++delete_line(index): bool
++delete_selected_lines(): int
+--
+*Líneas - Movimiento*
++move_line_up(index): bool
++move_line_down(index): bool
++move_selected_up(): bool
++move_selected_down(): bool
+--
+*Navegación*
++navigate_next(): Optional[int]
++navigate_previous(): Optional[int]
++navigate_to_next_title(): Optional[int]
++navigate_to_parent_title(): Optional[int]
+--
+*Selección*
++select_line(index, multi): bool
++select_range(start, end): int
++select_all(): int
++clear_selection(): int
+--
+*Hotlight*
++set_hotlight(index, value: bool)
+--
+*Filtrado*
++filter_by_text(text, include_parents): int
++clear_filter(): int
+--
+*Texto*
++update_line_text(index, text): bool
+--
+*Consultas*
++is_line_editable(index): bool
++can_delete_line(index): bool</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>20</x>
+      <y>40</y>
+      <w>420</w>
+      <h>510</h>
+    </coordinates>
+    <panel_attributes>bg=yellow
+*MDDocumentEditor*
+&lt;&lt;FocusBehavior, ThemableBehavior, ScrollView&gt;&gt;
+--
+*Referencias*
++state_manager: DocumentStateManager
++operations: DocumentOperations
+-_line_widgets: List[MDDocumentLineEditor]
+--
+*Layout*
++content_layout: BoxLayout  // contiene los widgets
+--
+*Teclado (detecta y envía a operations)*
+-_on_key_down(key, modifiers)
+-_handle_arrow_up(modifiers)
+-_handle_arrow_down(modifiers)
+-_handle_enter(modifiers)
+-_handle_delete()
+-_handle_backspace()
+-_handle_tab(modifiers)
+-_handle_escape()
+--
+*Gestión de Widgets*
++create_line_widgets()
++add_line_widget(index): MDDocumentLineEditor
++remove_line_widget(index)
++scroll_to_index(index)
+--
+*Observer de StateManager*
+-_on_line_state_event(event: LineStateEvent)
+-_on_line_added(event)
+-_on_line_removed(event)
+--
+*API Pública*
++load_document(md_document: MDDocument)
++get_widget_at_index(index): MDDocumentLineEditor</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>20</x>
+      <y>640</y>
+      <w>420</w>
+      <h>480</h>
+    </coordinates>
+    <panel_attributes>bg=yellow
+*MDDocumentLineEditor*
+&lt;&lt;ThemeWidget&gt;&gt;
+--
+*Referencias*
++line_state: LineState  // observa cambios
++operations: DocumentOperations  // TODAS las acciones van aquí
++index: int
+--
+*Estado Local (sincronizado con LineState)*
++selected: bool
++active: bool
++editing: bool
++hotlight: bool
+--
+*Sub-widgets*
++wg_line_editor: MDLineEditor
++wg_number_line: Optional[MDDLNumberLine]
+--
+*Eventos Detectados → Operations (TODOS)*
+-_on_click(touch)  // → operations.activate_line()
+-_on_text_changed(text)  // → operations.update_line_text()
+-_on_mouse_enter()  // → operations.set_hotlight(index, True)
+-_on_mouse_leave()  // → operations.set_hotlight(index, False)
+--
+*Observer de LineState*
+-_on_line_state_changed(event: LineStateEvent)
+-_apply_state_changes(changed_attrs: Set[str])
+--
+*Visualización*
++show_editor(show, cursor)
++update_selection_visual(selected, anim_type)
++update_active_visual(active)
++update_hotlight_visual(hotlight)</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1590</x>
+      <y>570</y>
+      <w>270</w>
+      <h>250</h>
+    </coordinates>
+    <panel_attributes>bg=magenta
+*MDLine*
+--
++md_text: str
++type: MD_LINE_TYPE
++num_line: int
++prev_line: MDLine
++next_line: MDLine
+--
++get_markup_text(): str
++update_type()
++get_title_level(): int
+--
+*Navegación*
++get_title_parent(): MDLine
++get_title_next(): MDLine
++get_list_parent(): MDLine</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1590</x>
+      <y>180</y>
+      <w>270</w>
+      <h>210</h>
+    </coordinates>
+    <panel_attributes>bg=magenta
+*MDDocument*
+--
++document: str
++path_doc: str
++doc_name: str
++md_lines: List[MDLine]
+--
++load_doc(path, name)
++save_doc()
++separate_lines()
++join_lines()
++append_line(text)
++insert_line(index, text)
++remove_line(md_line)</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1890</x>
+      <y>570</y>
+      <w>210</w>
+      <h>190</h>
+    </coordinates>
+    <panel_attributes>bg=cyan
+*&lt;&lt;enumeration&gt;&gt;*
+*MD_LINE_TYPE*
+--
+TEXT = 0
+TITLE = 1
+LIST = 5
+ORDER_LIST = 6
+TASK = 7
+TODO = 8
+BLOCKQUOTE = 10
+CODE = 12
+...</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>950</x>
+      <y>250</y>
+      <w>150</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>130.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>430</x>
+      <y>250</y>
+      <w>140</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>120.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>430</x>
+      <y>670</y>
+      <w>140</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>120.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1290</x>
+      <y>680</y>
+      <w>30</w>
+      <h>90</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;70.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1300</x>
+      <y>1280</y>
+      <w>30</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1530</x>
+      <y>770</y>
+      <w>80</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>60.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1850</x>
+      <y>680</y>
+      <w>60</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>40.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1710</x>
+      <y>380</y>
+      <w>30</w>
+      <h>210</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;190.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>430</x>
+      <y>850</y>
+      <w>670</w>
+      <h>40</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.
+</panel_attributes>
+    <additional_attributes>650.0;20.0;10.0;20.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>460</x>
+      <y>1160</y>
+      <w>420</w>
+      <h>140</h>
+    </coordinates>
+    <panel_attributes>bg=#FFFFCC
+*Flujo: Click en línea*
+--
+1. MDDocumentLineEditor._on_click(touch)
+2. → operations.activate_line(index, cursor_pos)
+3. → state_manager.activate_line(index, ...)
+4. → state_manager._emit_event(LineStateEvent)
+5. → MDDocumentLineEditor._on_line_state_changed()
+6. → widget actualiza visualización</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>1580</x>
+      <y>850</y>
+      <w>270</w>
+      <h>200</h>
+    </coordinates>
+    <panel_attributes>bg=white
+*Leyenda*
+--
+bg=green
+Verde: State Management
+(StateManager, LineState, Event)
+
+bg=orange
+Naranja: Operaciones
+
+bg=yellow
+Amarillo: Widgets UI
+
+bg=magenta
+Magenta: Modelo de Datos
+
+bg=cyan
+Cyan: Enumeraciones</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>460</x>
+      <y>1320</y>
+      <w>420</w>
+      <h>130</h>
+    </coordinates>
+    <panel_attributes>bg=#FFFFCC
+*Flujo: Tecla Enter (nueva línea)*
+--
+1. MDDocumentEditor._handle_enter()
+2. → operations.insert_line_below(active_index, "")
+3. → state_manager.insert_line(index, new_md_line)
+4. → state_manager._emit_event(type='added')
+5. → MDDocumentEditor._on_line_added()
+6. → crea nuevo MDDocumentLineEditor</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>10</x>
+      <y>1320</y>
+      <w>420</w>
+      <h>130</h>
+    </coordinates>
+    <panel_attributes>bg=#FFFFCC
+*Flujo: Hotlight (mouse enter/leave)*
+--
+1. MDDocumentLineEditor._on_mouse_enter()
+2. → operations.set_hotlight(index, True)
+3. → state_manager.set_hotlight(index, True)
+4. → state_manager._emit_event(LineStateEvent)
+5. → MDDocumentLineEditor._on_line_state_changed()
+6. → widget.update_hotlight_visual(True)</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLPackage</id>
+    <coordinates>
+      <x>1070</x>
+      <y>0</y>
+      <w>480</w>
+      <h>1520</h>
+    </coordinates>
+    <panel_attributes>*State Management*
+fg=green</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLPackage</id>
+    <coordinates>
+      <x>1580</x>
+      <y>10</y>
+      <w>540</w>
+      <h>830</h>
+    </coordinates>
+    <panel_attributes>*Modelo de Datos*
+fg=magenta</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLPackage</id>
+    <coordinates>
+      <x>10</x>
+      <y>10</y>
+      <w>440</w>
+      <h>1120</h>
+    </coordinates>
+    <panel_attributes>*UI Widgets*
+fg=#CC9900</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>220</x>
+      <y>540</y>
+      <w>30</w>
+      <h>120</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;100.0</additional_attributes>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>230</x>
+      <y>540</y>
+      <w>100</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>*n</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>1300</x>
+      <y>720</y>
+      <w>100</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>*n</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>460</x>
+      <y>230</y>
+      <w>40</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>ref</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>460</x>
+      <y>650</y>
+      <w>40</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>ref</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>460</x>
+      <y>840</y>
+      <w>80</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>observes</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>1000</x>
+      <y>230</y>
+      <w>40</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>ref</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>1720</x>
+      <y>530</y>
+      <w>40</w>
+      <h>20</h>
+    </coordinates>
+    <panel_attributes>*n</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1530</x>
+      <y>280</y>
+      <w>80</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>60.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>430</x>
+      <y>70</y>
+      <w>670</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.</panel_attributes>
+    <additional_attributes>650.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>460</x>
+      <y>50</y>
+      <w>80</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>observes</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>1550</x>
+      <y>260</y>
+      <w>40</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>ref</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>1540</x>
+      <y>750</y>
+      <w>40</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>ref</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>1580</x>
+      <y>1070</y>
+      <w>320</w>
+      <h>270</h>
+    </coordinates>
+    <panel_attributes>bg=#E8FFE8
+*Principio Clave V5*
+--
+TODOS los eventos de UI pasan por
+DocumentOperations:
+
+• click → operations.activate_line()
+• text_changed → operations.update_line_text()
+• mouse_enter → operations.set_hotlight(True)
+• mouse_leave → operations.set_hotlight(False)
+• key_enter → operations.insert_line_below()
+• key_delete → operations.delete_line()
+• key_arrow → operations.navigate_next/prev()
+
+DocumentOperations es el ÚNICO punto
+de entrada para modificar el estado.
+
+Widgets NUNCA acceden directamente
+a StateManager para modificar.</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLPackage</id>
+    <coordinates>
+      <x>540</x>
+      <y>90</y>
+      <w>430</w>
+      <h>690</h>
+    </coordinates>
+    <panel_attributes>*Operations*
+fg=orange</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>10</x>
+      <y>1180</y>
+      <w>420</w>
+      <h>120</h>
+    </coordinates>
+    <panel_attributes>bg=#FFFFCC
+*Flujo: Cambio de texto*
+--
+1. MDDocumentLineEditor._on_text_changed(new_text)
+2. → operations.update_line_text(index, new_text)
+3. → state_manager.update_line_text(index, text)
+4. → md_line.md_text = text (actualiza MDLine)
+5. → md_line.update_type() (detecta nuevo tipo)</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>0</x>
+      <y>1470</y>
+      <w>420</w>
+      <h>180</h>
+    </coordinates>
+    <panel_attributes>bg=#CCFFCC
+*Flujo: Filtrar por texto*
+--
+1. InputSearchOrFilter.filter_toggle → state='toggled'
+2. → App._on_filter_state_change(instance, state)
+3. → operations.filter_by_text(text, include_parents)
+4. → Para cada línea:
+      - coincide: state_manager.set_visibility(index, True)
+      - no coincide: state_manager.set_visibility(index, False)
+5. → state_manager._emit_event(LineStateEvent)
+6. → MDDocumentLineEditor._on_line_state_changed()
+7. → widget.visible = line_state.visible</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>460</x>
+      <y>1480</y>
+      <w>420</w>
+      <h>170</h>
+    </coordinates>
+    <panel_attributes>bg=#CCFFCC
+*Flujo: Limpiar filtro*
+--
+1. InputSearchOrFilter.filter_toggle → state='untoggled'
+2. → App._on_filter_state_change(instance, state)
+3. → operations.clear_filter()
+4. → Para cada línea: state_manager.set_visibility(index, True)
+5. → state_manager._emit_event(LineStateEvent)
+6. → MDDocumentLineEditor._on_line_state_changed()
+7. → widget.visible = True (muestra todos)</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>0</x>
+      <y>1680</y>
+      <w>420</w>
+      <h>200</h>
+    </coordinates>
+    <panel_attributes>bg=#CCFFCC
+*Flujo: Búsqueda (navegar a coincidencia)*
+--
+1. InputSearchOrFilter.search_button → on_click
+2. → dispatch('on_search', text)
+3. → App._on_search_event(instance, text)
+4. → operations.search_and_navigate(text, direction=1)
+   a. Buscar siguiente línea con text desde active_index
+   b. state_manager.activate_line(found_index)
+   c. MDDocumentEditor.scroll_to_index(found_index)
+5. → state_manager._emit_event(LineStateEvent)
+6. → MDDocumentLineEditor._on_line_state_changed()
+7. → widget activa + scroll visible</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>510</x>
+      <y>890</y>
+      <w>420</w>
+      <h>230</h>
+    </coordinates>
+    <panel_attributes>bg=#FFFFCC
+*NOTAS MPBE*
+--
+1. MDDocumentLineEditor Gestiona eventos del mouse
+    hacia DocumentOperations
+2. MDDocumentEditor Gestiona eventos del teclado
+    hacia DocumentOperations
+
+3. MDDocumentEditor observa eventos de modificacion
+    de lista en DocumentStateManager
+4. MDDocumentLineEditor observa eventos de estado
+    de LineState
+NOTA: Se pueden hacer todas las observaciones desde
+            DocumentStateManager?</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1300</x>
+      <y>1280</y>
+      <w>30</w>
+      <h>80</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;60.0;10.0;10.0</additional_attributes>
+  </element>
+</diagram>

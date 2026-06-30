@@ -68,7 +68,7 @@ from kivy_mpbe_widgets.wg_recycle_list_view.data_items import BaseItem, BaseData
 from kivy_mpbe_widgets.events.recycle_view_events import SelectItemEventDispatcher, UnSelectItemEventDispatcher
 from kivy_mpbe_widgets.events.recycle_view_events import ActivateItemEventDispatcher, UnActivateItemEventDispatcher
 from kivy_mpbe_widgets.graphics.widget_graphics import GFace, GBorder, GFocus, GHotLight
-from kivy_mpbe_widgets.wg_markdown.md_recycleview_le_data_item import DataThemed, DataShow, DataState, DataItemLineMDD
+from kivy_mpbe_widgets.wg_markdown.md_recycleview_le_data_item import DataThemed, DataShow, DataState, DataLineMDD
 
 # from kivy_dkw.wg_markdown.render_markdown_to_widgets import render_line_markdown_to_widget
 
@@ -249,7 +249,7 @@ class MDDocumentEditorViejo(FocusBehavior, ThemableBehavior, RecycleView,
         self.data_items = []
         for id, mdl in enumerate(md_lines, start=0):
             print(f"   L{mdl.num_line}: {mdl.md_text}")
-            data_line = DataItemLineMDD(md_line=mdl, data_themed=DataThemed(),
+            data_line = DataLineMDD(md_line=mdl, data_themed=DataThemed(),
                                         data_show=DataShow(), data_state=DataState())  # no uso el id del data. Uso md_line.num_line que se auto-actualiza
             dic_line = data_line.to_dict()
             self.data_items.append(dic_line)

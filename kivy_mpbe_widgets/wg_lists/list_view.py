@@ -276,7 +276,7 @@ from kivy_mpbe_widgets.events.list_view_events import SelectListItemEventDispatc
 #
 
 
-class ListView(FocusBehavior, BoxPanel, SelectListItemEventDispatcher):  # Esto ESTA OBSOLETO. Derivar de RecycleView
+class ListView(FocusBehavior, BoxPanel, SelectListItemEventDispatcher):
     """
     Widget Kivy_KDW String List View
     Events: on_select_list_item(selected_id, text)

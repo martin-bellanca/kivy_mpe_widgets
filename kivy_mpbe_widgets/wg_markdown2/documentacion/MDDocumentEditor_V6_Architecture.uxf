@@ -1,0 +1,974 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<diagram program="umlet" version="15.1">
+  <zoom_level>10</zoom_level>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1110</x>
+      <y>30</y>
+      <w>460</w>
+      <h>760</h>
+    </coordinates>
+    <panel_attributes>bg=green
+*DocumentStateManager*
+*&lt;&lt;EventDispatcher&gt;&gt;*
+*(ÚNICA FUENTE DE VERDAD)*
+--
+*Referencias*
++md_document: MDDocument  // ref externa
+-_line_states: Dict[int, LineState]
+-_active_index: Optional[int]
+-_selected_indices: Set[int]
+-_visible_indices: Set[int]
+-_filtered_indices: Set[int]
+--
+*Inicialización*
++set_document(md_document: MDDocument)
++load_document(md_lines: List[MDLine])
++clear_all()
+--
+*Acceso a Estados*
++get_state(index): LineState
++get_md_line(index): MDLine
++get_active_index(): Optional[int]
++get_selected_indices(): Set[int]
++get_total_lines(): int
++get_visible_lines_count(): int
+--
+*Modificación de Estados (muta LineState)*
++update_state(index, **changes)
++activate_line(index, enter_edit, cursor_pos)
++deactivate_line(index)
++select_line(index, multi)
++select_range(start, end)
++clear_selection()
++toggle_selection(index)
++set_hotlight(index, value)
++set_visibility(index, visible)
++update_line_height(index, height)
+--
+*Operaciones de Documento (dispatch eventos)*
++insert_line(index, md_line): LineState
++remove_line(index)
++move_line(from_index, to_index)
++update_line_text(index, text)
+--
+*Geometría*
+-_recalculate_geometry()
++get_visible_in_viewport(scroll_y, height): List[int]
+--
+*Eventos Estructurales (register_event_type)*
+on_line_added(event: LineStateEvent)
+on_line_removed(event: LineStateEvent)
+on_line_moved(event: LineStateEvent)</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1110</x>
+      <y>840</y>
+      <w>460</w>
+      <h>680</h>
+    </coordinates>
+    <panel_attributes>bg=green
+*LineState*
+*&lt;&lt;EventDispatcher&gt;&gt;*
+--
+*Referencia a datos (ObjectProperty)*
++md_line: ObjectProperty(MDLine)
++index: NumericProperty(int)
+--
+*Estado de UI (BooleanProperty)*
++selected: BooleanProperty = False
++active: BooleanProperty = False
++editing: BooleanProperty = False
++hotlight: BooleanProperty = False
+--
+*Cursor (NumericProperty)*
++cursor_col: NumericProperty = 0
++cursor_row: NumericProperty = 0
++cursor_pos: property  // (col, row) computed
+--
+*Visibilidad (BooleanProperty/OptionProperty)*
++visible: BooleanProperty = True
++matched_search: BooleanProperty = False
++group: OptionProperty  // LineGroup.value
+--
+*Geometría (NumericProperty)*
++height: NumericProperty = 30.0
++y_position: NumericProperty = 0.0
+--
+*Animación y tema*
++anim_type: OptionProperty  // AnimationType.value
++alpha_background: NumericProperty = 0.0
+--
+*Sub-widgets (BooleanProperty)*
++show_number_line: BooleanProperty = True
++show_tree: BooleanProperty = False
++show_infobar: BooleanProperty = False
+--
+*Métodos Delegados*
++get_md_text(): str  // → md_line.md_text
++get_line_type(): MD_LINE_TYPE  // → md_line.type
+--
+*Helpers para Enums*
++get_group_enum(): LineGroup
++set_group_enum(LineGroup)
++get_anim_enum(): AnimationType
++set_anim_enum(AnimationType)
+--
+*EVENTOS AUTOMÁTICOS*
+on_&lt;property&gt;  // Disparados por Kivy Properties</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1110</x>
+      <y>1600</y>
+      <w>460</w>
+      <h>170</h>
+    </coordinates>
+    <panel_attributes>bg=green
+*LineStateEvent*
+*@dataclass*
+--
++index: int
++line_state: LineState
++event_type: EventType  // CHANGED, ADDED, REMOVED, MOVED
++changed_attributes: Set[str] = field(default_factory=set)
+--
++is_structural_change(): bool  // ADDED, REMOVED, MOVED
++is_state_change(): bool  // CHANGED</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>580</x>
+      <y>120</y>
+      <w>410</w>
+      <h>650</h>
+    </coordinates>
+    <panel_attributes>bg=orange
+*DocumentOperations*
+--
++state_manager: DocumentStateManager
+--
+*Líneas - Activación*
++activate_line(index, enter_edit, cursor_pos): bool
++deactivate_current(): bool
++toggle_edit_mode(): bool
+--
+*Líneas - CRUD*
++insert_line_below(index, text): int
++insert_line_above(index, text): int
++delete_line(index): bool
++delete_selected_lines(): int
+--
+*Líneas - Movimiento*
++move_line_up(index): bool
++move_line_down(index): bool
++move_selected_up(): bool
++move_selected_down(): bool
+--
+*Navegación*
++navigate_next(): Optional[int]
++navigate_previous(): Optional[int]
++navigate_to_next_title(): Optional[int]
++navigate_to_parent_title(): Optional[int]
+--
+*Selección*
++select_line(index, multi): bool
++select_range(start, end): int
++select_all(): int
++clear_selection(): int
+--
+*Hotlight*
++set_hotlight(index, value: bool)
+--
+*Filtrado*
++filter_by_text(text, include_parents): int
++clear_filter(): int
+--
+*Texto*
++update_line_text(index, text): bool
+--
+*Consultas*
++is_line_editable(index): bool
++can_delete_line(index): bool</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>50</x>
+      <y>40</y>
+      <w>420</w>
+      <h>600</h>
+    </coordinates>
+    <panel_attributes>bg=yellow
+*MDDocumentEditor*
+&lt;&lt;FocusBehavior, ThemableBehavior, ScrollView&gt;&gt;
+--
+*Referencias*
++state_manager: DocumentStateManager
++operations: DocumentOperations
+-_line_widgets: Dict[int, MDDocumentLineEditor]
+--
+*Layout*
++content_layout: BoxLayout  // contiene los widgets
+--
+*Teclado (detecta y envía a operations)*
+-_on_key_down(key, modifiers)
+-_handle_arrow_up(modifiers)
+-_handle_arrow_down(modifiers)
+-_handle_enter(modifiers)
+-_handle_delete()
+-_handle_backspace()
+-_handle_tab(modifiers)
+-_handle_escape()
+--
+*Gestión de Widgets*
++create_line_widgets()
++add_line_widget(index): MDDocumentLineEditor
++remove_line_widget(index)
++scroll_to_index(index)
+--
+*Bindings a StateManager (eventos estructurales)*
+_bind_to_state_manager():
+    sm.bind(on_line_added=self._on_line_added)
+    sm.bind(on_line_removed=self._on_line_removed)
+    sm.bind(on_line_moved=self._on_line_moved)
+--
+*Callbacks de Eventos Estructurales*
+-_on_line_added(instance, event: LineStateEvent)
+-_on_line_removed(instance, event: LineStateEvent)
+-_on_line_moved(instance, event: LineStateEvent)
+--
+*API Pública*
++load_document(md_document: MDDocument)
++get_widget_at_index(index): MDDocumentLineEditor</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>50</x>
+      <y>690</y>
+      <w>420</w>
+      <h>550</h>
+    </coordinates>
+    <panel_attributes>bg=yellow
+*MDDocumentLineEditor*
+*&lt;&lt;ThemeWidget&gt;&gt;*
+--
+*Referencias*
++line_state: LineState  // BIND DIRECTO a Properties
++operations: DocumentOperations
++index: int
+--
+*Sub-widgets*
++wg_line_editor: MDLineEditor
++wg_number_line: Optional[MDDLNumberLine]
+--
+*Bindings a LineState (automáticos)*
+_bind_to_line_state():
+    state.bind(active=self._on_active_changed)
+    state.bind(editing=self._on_editing_changed)
+    state.bind(selected=self._on_selected_changed)
+    state.bind(hotlight=self._on_hotlight_changed)
+    state.bind(visible=self._on_visible_changed)
+    state.bind(height=self._on_height_changed)
+--
+*Callbacks de Properties (UI reactiva)*
+-_on_active_changed(instance, value)
+-_on_editing_changed(instance, value)
+-_on_selected_changed(instance, value)
+-_on_hotlight_changed(instance, value)
+-_on_visible_changed(instance, value)
+-_on_height_changed(instance, value)
+--
+*Eventos → Operations (TODOS)*
+-_on_click(touch)  // → operations.activate_line()
+-_on_text_changed(text)  // → operations.update_line_text()
+-_on_mouse_enter()  // → operations.set_hotlight(True)
+-_on_mouse_leave()  // → operations.set_hotlight(False)
+--
+*Visualización*
++update_visual_state()</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1620</x>
+      <y>660</y>
+      <w>270</w>
+      <h>250</h>
+    </coordinates>
+    <panel_attributes>bg=magenta
+*MDLine*
+--
++md_text: str
++type: MD_LINE_TYPE
++num_line: int
++prev_line: MDLine
++next_line: MDLine
+--
++get_markup_text(): str
++update_type()
++get_title_level(): int
+--
+*Navegación*
++get_title_parent(): MDLine
++get_title_next(): MDLine
++get_list_parent(): MDLine</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1620</x>
+      <y>180</y>
+      <w>270</w>
+      <h>210</h>
+    </coordinates>
+    <panel_attributes>bg=magenta
+*MDDocument*
+--
++document: str
++path_doc: str
++doc_name: str
++md_lines: List[MDLine]
+--
++load_doc(path, name)
++save_doc()
++separate_lines()
++join_lines()
++append_line(text)
++insert_line(index, text)
++remove_line(md_line)</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1920</x>
+      <y>180</y>
+      <w>210</w>
+      <h>190</h>
+    </coordinates>
+    <panel_attributes>bg=cyan
+*&lt;&lt;enumeration&gt;&gt;*
+*MD_LINE_TYPE*
+--
+TEXT = 0
+TITLE = 1
+LIST = 5
+ORDER_LIST = 6
+TASK = 7
+TODO = 8
+BLOCKQUOTE = 10
+CODE = 12
+...</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1930</x>
+      <y>460</y>
+      <w>210</w>
+      <h>120</h>
+    </coordinates>
+    <panel_attributes>bg=cyan
+*&lt;&lt;enumeration&gt;&gt;*
+*LineGroup*
+--
+VISIBLE = 'visible'
+HIDDEN = 'hidden'
+FILTERED = 'filtered'</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1930</x>
+      <y>630</y>
+      <w>210</w>
+      <h>150</h>
+    </coordinates>
+    <panel_attributes>bg=cyan
+*&lt;&lt;enumeration&gt;&gt;*
+*AnimationType*
+--
+NONE = 'none'
+FADE = 'fade'
+SLIDE_UP = 'slide_up'
+SLIDE_DOWN = 'slide_down'
+EXPAND_UP = 'expand_up'
+EXPAND_DOWN = 'expand_down'</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1930</x>
+      <y>820</y>
+      <w>210</w>
+      <h>130</h>
+    </coordinates>
+    <panel_attributes>bg=cyan
+*&lt;&lt;enumeration&gt;&gt;*
+*EventType*
+--
+CHANGED = 'changed'
+ADDED = 'added'
+REMOVED = 'removed'
+MOVED = 'moved'
+BATCH = 'batch'</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>980</x>
+      <y>250</y>
+      <w>150</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>130.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>460</x>
+      <y>250</y>
+      <w>140</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>120.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>460</x>
+      <y>720</y>
+      <w>140</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>120.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1320</x>
+      <y>780</y>
+      <w>30</w>
+      <h>80</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;60.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1560</x>
+      <y>850</y>
+      <w>80</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>60.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1880</x>
+      <y>770</y>
+      <w>70</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>50.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1740</x>
+      <y>380</y>
+      <w>30</w>
+      <h>300</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;280.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>460</x>
+      <y>950</y>
+      <w>670</w>
+      <h>40</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.
+bind()</panel_attributes>
+    <additional_attributes>650.0;20.0;10.0;20.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>2460</x>
+      <y>1120</y>
+      <w>420</w>
+      <h>160</h>
+    </coordinates>
+    <panel_attributes>bg=#FFFFCC
+*Flujo V6: Click en línea*
+--
+1. MDDocumentLineEditor._on_click(touch)
+2. → operations.activate_line(index, cursor_pos)
+3. → state_manager.update_state(index, active=True)
+4. → LineState.active = True  // Property mutable
+5. → Kivy dispara on_active automáticamente
+6. → MDDocumentLineEditor._on_active_changed()
+7. → widget actualiza visualización</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>630</x>
+      <y>1030</y>
+      <w>270</w>
+      <h>220</h>
+    </coordinates>
+    <panel_attributes>bg=white
+*Leyenda*
+--
+bg=green
+Verde: State Management
+(StateManager, LineState, Event)
+
+bg=orange
+Naranja: Operaciones
+
+bg=yellow
+Amarillo: Widgets UI
+
+bg=magenta
+Magenta: Modelo de Datos
+
+bg=cyan
+Cyan: Enumeraciones</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>2460</x>
+      <y>1310</y>
+      <w>420</w>
+      <h>150</h>
+    </coordinates>
+    <panel_attributes>bg=#FFFFCC
+*Flujo V6: Tecla Enter (nueva línea)*
+--
+1. MDDocumentEditor._handle_enter()
+2. → operations.insert_line_below(active_index, "")
+3. → state_manager.insert_line(index, new_md_line)
+4. → state_manager.dispatch('on_line_added', event)
+5. → MDDocumentEditor._on_line_added(inst, event)
+6. → crea nuevo MDDocumentLineEditor
+7. → nuevo widget hace bind() a su LineState</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>2010</x>
+      <y>1310</y>
+      <w>420</w>
+      <h>150</h>
+    </coordinates>
+    <panel_attributes>bg=#FFFFCC
+*Flujo V6: Hotlight (mouse enter/leave)*
+--
+1. MDDocumentLineEditor._on_mouse_enter()
+2. → operations.set_hotlight(index, True)
+3. → state_manager.update_state(index, hotlight=True)
+4. → LineState.hotlight = True  // Property mutable
+5. → Kivy dispara on_hotlight automáticamente
+6. → MDDocumentLineEditor._on_hotlight_changed()
+7. → widget.update_visual_state()</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLPackage</id>
+    <coordinates>
+      <x>1100</x>
+      <y>0</y>
+      <w>480</w>
+      <h>1780</h>
+    </coordinates>
+    <panel_attributes>*State Management*
+fg=green</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLPackage</id>
+    <coordinates>
+      <x>1610</x>
+      <y>10</y>
+      <w>540</w>
+      <h>950</h>
+    </coordinates>
+    <panel_attributes>*Modelo de Datos*
+fg=magenta</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLPackage</id>
+    <coordinates>
+      <x>40</x>
+      <y>10</y>
+      <w>440</w>
+      <h>1240</h>
+    </coordinates>
+    <panel_attributes>*UI Widgets*
+fg=#CC9900</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>250</x>
+      <y>630</y>
+      <w>30</w>
+      <h>80</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;60.0</additional_attributes>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>260</x>
+      <y>540</y>
+      <w>100</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>*n</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>1330</x>
+      <y>720</y>
+      <w>100</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>*n</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>490</x>
+      <y>230</y>
+      <w>40</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>ref</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>480</x>
+      <y>710</y>
+      <w>40</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>ref</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>480</x>
+      <y>950</y>
+      <w>100</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>bind(props)</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>1030</x>
+      <y>230</y>
+      <w>40</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>ref</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>1750</x>
+      <y>530</y>
+      <w>40</w>
+      <h>20</h>
+    </coordinates>
+    <panel_attributes>*n</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1560</x>
+      <y>280</y>
+      <w>80</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>60.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>460</x>
+      <y>70</y>
+      <w>670</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.</panel_attributes>
+    <additional_attributes>650.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>490</x>
+      <y>50</y>
+      <w>130</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>bind(on_line_*)</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>1580</x>
+      <y>260</y>
+      <w>40</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>ref</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>1570</x>
+      <y>750</y>
+      <w>40</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>ref</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>1610</x>
+      <y>1110</y>
+      <w>320</w>
+      <h>370</h>
+    </coordinates>
+    <panel_attributes>bg=#E8FFE8
+*Principio Clave V6*
+--
+*Arquitectura UNIFICADA con EventDispatcher:*
+
+1. LineState hereda de EventDispatcher
+2. StateManager hereda de EventDispatcher
+3. TODO usa bind() de Kivy (sin observers manuales)
+
+*Eventos de Estado (LineState):*
+• Kivy Properties disparan on_&lt;prop&gt;
+• MDDocumentLineEditor hace bind() directo
+
+*Eventos Estructurales (StateManager):*
+• register_event_type('on_line_added')
+• dispatch('on_line_added', event)
+• MDDocumentEditor hace bind()
+
+*Flujo de datos simplificado:*
+• Widget detecta evento (click, key, etc)
+• → operations.metodo()
+• → state_manager modifica/dispatch
+• → Kivy notifica via bind()
+• → Widget callback actualiza UI
+
+Widgets NUNCA acceden directamente
+a StateManager para modificar.</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLPackage</id>
+    <coordinates>
+      <x>570</x>
+      <y>90</y>
+      <w>430</w>
+      <h>690</h>
+    </coordinates>
+    <panel_attributes>*Operations*
+fg=orange</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>2010</x>
+      <y>1120</y>
+      <w>420</w>
+      <h>160</h>
+    </coordinates>
+    <panel_attributes>bg=#FFFFCC
+*Flujo V6: Cambio de texto*
+--
+1. MDDocumentLineEditor._on_text_changed(new_text)
+2. → operations.update_line_text(index, new_text)
+3. → state_manager.update_line_text(index, text)
+4. → md_line.md_text = text (actualiza MDLine)
+5. → md_line.update_type() (detecta nuevo tipo)
+6. NOTA: No hay cambio de LineState Properties
+   (el texto está en MDLine, no en LineState)</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>2000</x>
+      <y>1480</y>
+      <w>420</w>
+      <h>180</h>
+    </coordinates>
+    <panel_attributes>bg=#CCFFCC
+*Flujo V6: Filtrar por texto*
+--
+1. InputSearchOrFilter.filter_toggle → state='toggled'
+2. → App._on_filter_state_change(instance, state)
+3. → operations.filter_by_text(text, include_parents)
+4. → Para cada línea:
+      state_manager.update_state(i, visible=match)
+5. → LineState.visible = True/False
+6. → Kivy dispara on_visible
+7. → MDDocumentLineEditor._on_visible_changed()
+8. → widget.opacity/disabled actualizado</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>2460</x>
+      <y>1480</y>
+      <w>420</w>
+      <h>180</h>
+    </coordinates>
+    <panel_attributes>bg=#CCFFCC
+*Flujo V6: Limpiar filtro*
+--
+1. InputSearchOrFilter.filter_toggle → state='untoggled'
+2. → App._on_filter_state_change(instance, state)
+3. → operations.clear_filter()
+4. → Para cada línea:
+      state_manager.update_state(i, visible=True)
+5. → LineState.visible = True
+6. → Kivy dispara on_visible
+7. → MDDocumentLineEditor._on_visible_changed()
+8. → widget visible</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1330</x>
+      <y>1510</y>
+      <w>30</w>
+      <h>110</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;90.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>2310</x>
+      <y>680</y>
+      <w>420</w>
+      <h>410</h>
+    </coordinates>
+    <panel_attributes>bg=#E8E8FF
+*CAMBIOS V5 → V6*
+--
+*LineState:*
+- Antes: @dataclass(frozen=True) inmutable
+- Ahora: EventDispatcher mutable
+
+*StateManager:*
+- Antes: patrón Observer manual (subscribe/emit)
+- Ahora: EventDispatcher con register_event_type
+
+*Properties:*
+- Antes: atributos simples
+- Ahora: Kivy Properties (NumericProperty, etc)
+
+*Eventos UNIFICADOS con Kivy:*
+- Antes: with_changes() + observers manuales
+- Ahora: TODO usa bind() de Kivy
+  • LineState: Properties disparan on_&lt;prop&gt;
+  • StateManager: dispatch('on_line_added')
+
+*Ventajas:*
+✓ Arquitectura unificada (solo Kivy Events)
+✓ Sin observers manuales
+✓ Código más simple y reactivo
+✓ Mejor integración con sistema de Kivy</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>1610</x>
+      <y>1500</y>
+      <w>320</w>
+      <h>190</h>
+    </coordinates>
+    <panel_attributes>bg=#FFE8E8
+*Dos Tipos de Eventos (ambos via Kivy)*
+--
+*Tipo 1: Eventos de Property*
+- Origen: LineState.&lt;property&gt; = valor
+- Mecanismo: Kivy Properties (on_&lt;prop&gt;)
+- Destino: MDDocumentLineEditor.bind()
+- Para: cambios de estado (active, editing, etc)
+
+*Tipo 2: Eventos Estructurales*
+- Origen: StateManager.dispatch()
+- Mecanismo: register_event_type + dispatch
+- Destino: MDDocumentEditor.bind()
+- Para: add/remove/move líneas</panel_attributes>
+    <additional_attributes/>
+  </element>
+</diagram>

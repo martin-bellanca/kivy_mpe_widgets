@@ -1,0 +1,14 @@
+#OBJETIVO
+Realizar la actualización del componente wg_markdown a la versión 2 en el directorio wg_markdown2. La versión actual es complicada y no funciona bien por lo que se decidió re codificar.
+
+#CONSIDERACIONES
+1. Se usara como base el código de wg_markdown.
+2. Considero el directorio wg_markdown2 como ./
+3. La arquitectura base esta definida y se encuentra en el archivo ./documentacion/MDDocumentEditor_V5_Architecture.uxf
+4. El esquema de directorios de wg_markdown2 ya se creo.
+5. Algunos módulos también se crearon pero hay que revisarlos y ajustarlos a la nueva arquitectura.
+6. Todo el código generado debe ser claro y bien documentado.
+7. Puedes consultarme en cualquier momento dudas o decisiones a tomar sobre el proyecto.
+
+#DESARROLLO
+Revisa el directorio wg_markdown2 y genera una archivo .md con el nuevo esquema de arquitectura basado en MDDocumentEditor_V5_Architecture.uxf

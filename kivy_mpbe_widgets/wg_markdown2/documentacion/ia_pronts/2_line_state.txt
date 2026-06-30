@@ -1,0 +1,9 @@
+#Clase LineState
+Realizar lo siguiente sobre la clase existente:
+1. Crear constante para valores de group
+2. Crear constante para valores de anim_type
+3. Completar la función __repr__
+4. Codificar la función get_md_text(): str  // delegado a md_line
+5. Codificar la función get_line_type(): MD_LINE_TYPE  // delegado
+6. Codificar esquema de evento on_state_changed: EventDispatcher
+

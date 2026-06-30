@@ -1,0 +1,9 @@
+Codifica la nueva version de MDDocument y todas las clases y modulos relacionados en la carpeta wg_makdown2.
+Notas:
+- Esquema de clases: MDDocument -> RecycleBoxLayout -> StateManager -> LineState
+- Mantener el esquema de servicios
+- Codificacion por etapas.
+	- Etapa I: Codificacion basica para hacer funcional el widget
+- Codificar en la carpeta tests una app test totalmente funcional
+- El codigo tiene que ser simple, claro y bien documentado
+- No dudes en consultar las dudas que tengas

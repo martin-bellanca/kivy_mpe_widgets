@@ -1,0 +1,15 @@
+Vamos a analizar los eventos.
+Hay 2 tipos de eventos:
+	1. Generados por DocumentStateManager. Eventos que afectan al conjuntos de la lista. Con origen en MDDocumentEditor fundamentalmente desde _on_key_down() y las funciones _handle.
+	2. Generados por LineState sin pasar por DocumentStateManager. Eventos que afectan a la linea individual. Con origen en MDDocumentLineEditor y generados fundamentalmente por el mouse.
+
+Los eventos tipo 1 son emitidos desde DocumentSateManager, captados por MDDocumentEditor y procesados sobre el ScrollView.
+Los eventos tipo 2 son emitidos desde LineState, captados por los MDDocumentLineEditor y procesados internamente para su visualización. Para esto cada MDDocumentLineEditor debe observar a su correspondiente 
+LineState.
+
+Hace una tabla con la lista de los eventos emitidos indicando el origen, el emisor y quien los capta.
+
+
+Correcciones:
+- No me convence que LineState sea inmutable. Solo complica el seguimiento de los eventos por MDDocumentLineEditor.
+
