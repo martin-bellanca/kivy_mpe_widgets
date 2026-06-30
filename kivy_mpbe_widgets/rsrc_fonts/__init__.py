@@ -80,6 +80,17 @@ def _register_fonts():
             "fn_italic": FONTS_PATH + 'Roboto-ThinItalic.ttf',
             "fn_bolditalic": FONTS_PATH + 'Roboto-LightItalic.ttf'
         },
+        {
+            # Fuente monoespaciada usada para el codigo inline del markdown
+            # ([font=RobotoMono] en md_translate). Si no se registra, Kivy busca
+            # el archivo 'RobotoMono.ttf' y falla al renderizar codigo.
+            "name": "RobotoMono",
+            "fn_regular": FONTS_PATH + 'RobotoMono-Regular.ttf',
+        },
     ]
     for font in FONTS:
         LabelBase.register(**font)
+
+
+# Registra las fuentes al importar el modulo (mismo patron que rsrc_fonts_icons).
+_register_fonts()

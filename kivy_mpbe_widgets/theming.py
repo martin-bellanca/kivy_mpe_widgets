@@ -51,8 +51,10 @@ from helpers_mpbe.python import compose
 # kivy_dkw imports ----------------------------------------------------------
 from kivy_mpbe_widgets.rsrc_themes import THEMES, STYLES
 from kivy_mpbe_widgets.rsrc_fonts_icons import ICONS
-
-# TODO: Las fuentes desde donde se asignan (ver el init de rsrc_font_icons y rsrc_fonts)
+# Importa rsrc_fonts por su efecto: registra las fuentes (Roboto, RobotoLight,
+# RobotoMono) al cargar el modulo. RobotoMono es necesaria para el codigo inline
+# del markdown ([font=RobotoMono]).
+from kivy_mpbe_widgets import rsrc_fonts  # noqa: F401
 class Theme(object):
     """
     ## Clase que define el tema de la aplicacion
