@@ -27,6 +27,7 @@ from kivy.uix.behaviors import FocusBehavior
 from kivy.properties import ObjectProperty
 from kivy.logger import Logger
 from kivy.clock import Clock
+from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from pygments.unistring import No
 
@@ -327,92 +328,96 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         return
 
     # ========================================================================
-    # ACTIVACIÓN DE LÍNEA (Etapa I - Básico)
+    # EVENTOS DE MOUSE / ACTIVACIÓN POR CLICK (Inc 1)
     # ========================================================================
 
-    def activate_line(self, index: int, enter_edit_mode: bool = False):
-        """
-        Activar una línea.
+    # Umbral (px) para distinguir un tap de un arrastre-scroll
+    _TAP_THRESHOLD = dp(8)
 
-        Etapa I: Solo visual, sin modo edición funcional.
+    def on_touch_down(self, touch):
+        """Registra el inicio del touch para distinguir tap de scroll."""
+        if self.collide_point(*touch.pos):
+            touch.ud['md_down_pos'] = touch.pos
+        return super().on_touch_down(touch)
+
+    def on_touch_up(self, touch):
+        """
+        Si el touch fue un tap (se movió poco) sobre una línea, la activa.
+        Si hubo arrastre, se trata como scroll y no activa nada.
+        La rueda del mouse (que Kivy emite como touch) se ignora para no
+        seleccionar la línea al scrollear.
+        """
+        handled = super().on_touch_up(touch)
+
+        # Ignorar la rueda del mouse (scroll), que no debe seleccionar
+        if getattr(touch, 'button', None) in ('scrollup', 'scrolldown',
+                                              'scrollleft', 'scrollright'):
+            return handled
+
+        start = touch.ud.get('md_down_pos')
+        if start is not None and self.collide_point(*touch.pos):
+            moved = abs(touch.pos[0] - start[0]) + abs(touch.pos[1] - start[1])
+            if moved <= self._TAP_THRESHOLD:
+                line = self._line_at(touch.pos)
+                if line is not None:
+                    self.activate_line(line.index, anim_from=touch.pos)
+        return handled
+
+    def _line_at(self, window_pos):
+        """Devuelve el MDDocumentLine bajo la posición (coords de ventana)."""
+        for child in self.doc_lines_layout.children:
+            if child.collide_point_to_window(*window_pos):
+                return child
+        return None
+
+    # ========================================================================
+    # ACTIVACIÓN DE LÍNEA
+    # ========================================================================
+
+    def activate_line(self, index: int, enter_edit_mode: bool = False, anim_from=None):
+        """
+        Activar una línea (Inc 1).
+
+        Anima la des-selección de la línea previa y la selección de la nueva
+        (verde, expandiéndose desde anim_from). Actualiza el estado en el
+        StateManager (fuente de verdad del flag active).
 
         Args:
             index: Índice de la línea a activar
-            enter_edit_mode: Si debe entrar en modo edición (Etapa II)
-
-        Note:
-            En Etapa I, enter_edit_mode se ignora. Solo activa visualmente.
+            enter_edit_mode: Si debe entrar en modo edición (Inc 2)
+            anim_from: Posición (coords de ventana) desde donde expandir la
+                animación de selección. Si es None, se anima desde el centro.
         """
-        Logger.info(f"MDDocumentEditor: Activating line {index}")
+        old_index = self.state_manager.get_active_index()
+        if old_index == index:
+            return  # ya está activa
 
-        # 1. Desactivar línea anterior
-        if self.active_line_widget:
-            old_index = self.active_line_widget.index
+        # Animar salida de la línea previa
+        if old_index is not None:
+            old_widget = self._line_widgets.get(old_index)
+            if old_widget is not None:
+                old_widget.unselect(anim_from)
 
-            # Desactivar visualmente
-            self.active_line_widget.active = False
-            if hasattr(self.active_line_widget, 'graphic_select'):
-                self.active_line_widget.graphic_select.show(False)
-
-            # Actualizar estado en StateManager
-            self.state_manager.update_state(
-                old_index,
-                active=False,
-                editing=False
-            )
-
-            Logger.debug(f"MDDocumentEditor: Deactivated line {old_index}")
-
-        # 2. Obtener widget de nueva línea
-        widget = self.doc_lines_layout.get_widget(index)
-
-        if not widget:
-            Logger.warning(
-                f"MDDocumentEditor: Cannot activate line {index}, "
-                f"widget not in viewport"
-            )
-            # TODO Etapa II: Forzar scroll y creación de widget
+        # Actualizar estado (fuente de verdad)
+        ok = self.state_manager.activate_line(index, enter_edit=enter_edit_mode)
+        if not ok:
             return
 
-        # 3. Activar visualmente
-        widget.active = True
-        if hasattr(widget, 'graphic_select'):
-            widget.graphic_select.show(True)
-
-        # 4. Actualizar estado en StateManager
-        self.state_manager.update_state(
-            index,
-            active=True,
-            editing=enter_edit_mode
-        )
-
-        # 5. Guardar referencia
-        self.active_line_widget = widget
+        # Animar entrada de la nueva línea
+        new_widget = self._line_widgets.get(index)
+        if new_widget is not None:
+            new_widget.select(anim_from)
+        self.active_line_widget = new_widget
 
         Logger.debug(f"MDDocumentEditor: Activated line {index}")
 
     def deactivate_current_line(self):
-        """
-        Desactivar la línea activa actual.
-        """
-        if self.active_line_widget:
-            old_index = self.active_line_widget.index
-
-            # Desactivar visualmente
-            self.active_line_widget.active = False
-            if hasattr(self.active_line_widget, 'graphic_select'):
-                self.active_line_widget.graphic_select.show(False)
-
-            # Actualizar estado
-            self.state_manager.update_state(
-                old_index,
-                active=False,
-                editing=False
-            )
-
+        """Desactivar la línea activa actual (delegado al StateManager)."""
+        active_index = self.state_manager.get_active_index()
+        if active_index is not None:
+            self.state_manager.deactivate_line(active_index)
             self.active_line_widget = None
-
-            Logger.debug(f"MDDocumentEditor: Deactivated line {old_index}")
+            Logger.debug(f"MDDocumentEditor: Deactivated line {active_index}")
 
     # ========================================================================
     # EVENTOS DE TECLADO (Etapa II)
