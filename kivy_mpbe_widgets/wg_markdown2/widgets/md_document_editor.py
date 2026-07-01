@@ -34,7 +34,9 @@ from pygments.unistring import No
 # Importar ThemableBehavior
 from kivy_mpbe_widgets.theming import ThemableBehavior
 from kivy_mpbe_widgets.wg_markdown2.widgets.md_labels import MDTextLabel
-from kivy_mpbe_widgets.wg_markdown2.widgets.md_document_line import MDDocumentLine
+from kivy_mpbe_widgets.wg_markdown2.widgets.md_document_line import (
+    MDDocumentLine, EDITOR_PLACEMENT_OVERLAY, EDITOR_PLACEMENT_BELOW,
+)
 
 # Importar componentes core
 from ..core.state_manager import DocumentStateManager as StateManager
@@ -89,6 +91,8 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         self.state_manager = StateManager()
         self.doc_lines_layout = None
         self.active_line_widget = None
+        # Config: ubicación del editor en modo edición ('overlay' | 'below')
+        self.editor_placement = EDITOR_PLACEMENT_BELOW
         # self.md_document: Optional[MDDocument] = None  md_document esta en state_manager?
         self.last_scroll_y = 1.0
 
@@ -214,7 +218,7 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         self._line_widgets = {}
 
         for line_state in self.state_manager.get_line_states():
-            line_widget = MDDocumentLine(line_state)
+            line_widget = MDDocumentLine(line_state, placement=self.editor_placement)
             self.doc_lines_layout.add_widget(line_widget)
             self._line_widgets[line_state.index] = line_widget
 
@@ -360,7 +364,10 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
             if moved <= self._TAP_THRESHOLD:
                 line = self._line_at(touch.pos)
                 if line is not None:
-                    self.activate_line(line.index, anim_from=touch.pos)
+                    if getattr(touch, 'is_double_tap', False):
+                        self.edit_line(line.index, anim_from=touch.pos)
+                    else:
+                        self.activate_line(line.index, anim_from=touch.pos)
         return handled
 
     def _line_at(self, window_pos):
@@ -410,6 +417,18 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         self.active_line_widget = new_widget
 
         Logger.debug(f"MDDocumentEditor: Activated line {index}")
+
+    def edit_line(self, index: int, anim_from=None):
+        """
+        Entrar en modo edición de una línea (Inc 2).
+
+        Se asegura de que la línea esté activa (seleccionada) y luego pone
+        editing=True en el LineState; el MDDocumentLine reacciona mostrando
+        el editor en overlay.
+        """
+        self.activate_line(index, anim_from=anim_from)  # selecciona si no lo estaba
+        self.state_manager.update_state(index, editing=True)
+        Logger.debug(f"MDDocumentEditor: Editing line {index}")
 
     def deactivate_current_line(self):
         """Desactivar la línea activa actual (delegado al StateManager)."""

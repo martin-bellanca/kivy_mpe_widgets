@@ -125,8 +125,8 @@ classDiagram
     MDDocument o-- "n" MDLine : contiene
 
     MDDocumentLine *-- BaseMDLabel : label
-    MDDocumentLine ..> LineState : observa (Inc 1/2)
-    MDDocumentLine ..> MDLineEditor : embeberá (Inc 2)
+    MDDocumentLine ..> LineState : observa (active/editing)
+    MDDocumentLine ..> MDLineTextInput : overlay/below en edición
 
     MDDocumentLineEditor *-- MDLineEditor
     MDLineEditor *-- BaseMDLabel : active_label
@@ -213,8 +213,8 @@ flowchart TD
     E1["Etapa I: render + scroll<br/>(labels solo lectura)"]:::done
     I0["Inc 0: render bound a LineState<br/>+ arreglar duplicación de widgets"]:::done
     I1["Inc 1: hover + selección por click<br/>(GHotlightItem + GSelectItem)"]:::done
-    I2["Inc 2: modo edición<br/>(editing → show_editor)"]:::wip
-    I3["Inc 3: salir/commit + teclado<br/>(Esc/Enter/flechas)"]:::todo
+    I2["Inc 2: modo edición<br/>(overlay/below + MDLineTextInput)"]:::done
+    I3["Inc 3: teclado + navegación<br/>(flechas / Enter nueva línea)"]:::wip
 
     E1 --> I0 --> I1 --> I2 --> I3
 
@@ -228,8 +228,8 @@ flowchart TD
 | I | Render + scroll (labels) | ✅ Hecho | El documento se ve renderizado |
 | 0 | Render bound a `LineState` + fix duplicación | ✅ Hecho | Cada línea es un `MDDocumentLine` atado a su `LineState`; el scroll ya no duplica |
 | 1 | Hover + selección por click | ✅ Hecho | Hover = 2 líneas verticales azules (GHotlightItem); click = selección verde animada desde el click (GSelectItem); la rueda del mouse no selecciona |
-| 2 | Modo edición (`editing` → `show_editor`) | 🟡 En curso | Se puede tipear; el texto queda en el documento |
-| 3 | Salir/commit + teclado | ⬜ Pendiente | Esc cancela, Enter confirma, flechas navegan |
+| 2 | Modo edición (doble-click) | ✅ Hecho | Doble-click edita; `MDLineTextInput` en overlay translúcido o debajo del label (config `editor_placement`); render en vivo; Enter/foco confirma, Esc cancela |
+| 3 | Teclado + navegación | 🟡 En curso | Flechas mueven la línea activa; Enter inserta línea; etc. |
 
 ### Bugs/incompletos conocidos
 - ✅ ~~`populate_md_lines` y `_refresh_visible_widgets` duplican widgets~~ → resuelto en Inc 0 (construcción única + `_refresh_visible_widgets` no-op).
