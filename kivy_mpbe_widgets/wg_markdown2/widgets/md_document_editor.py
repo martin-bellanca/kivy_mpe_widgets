@@ -33,6 +33,7 @@ from pygments.unistring import No
 # Importar ThemableBehavior
 from kivy_mpbe_widgets.theming import ThemableBehavior
 from kivy_mpbe_widgets.wg_markdown2.widgets.md_labels import MDTextLabel
+from kivy_mpbe_widgets.wg_markdown2.widgets.md_document_line import MDDocumentLine
 
 # Importar componentes core
 from ..core.state_manager import DocumentStateManager as StateManager
@@ -131,8 +132,15 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         #     state_manager=self.state_manager
         # )
         self.doc_lines_layout = BoxLayout(  # Versión Actual
-            orientation='vertical', size_hint_min_y=None, spacing=0, padding=0
+            orientation='vertical', size_hint_y=None, spacing=0, padding=0
         )
+        # El layout crece con su contenido para que el ScrollView pueda desplazarlo.
+        self.doc_lines_layout.bind(
+            minimum_height=self.doc_lines_layout.setter('height')
+        )
+
+        # Mapa index -> MDDocumentLine (poblado en populate_md_lines)
+        self._line_widgets = {}
 
         self.add_widget(self.doc_lines_layout)
 
@@ -153,29 +161,24 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
 
     def initialize_document(self):
         """
-        Inicializa/resetea el documento.
+        Inicializa/resetea el documento a estado vacío.
 
         Limpia:
-        - Data del RecycleView
-        - Undo manager
+        - Filas de líneas (widgets) y su mapa
         - StateManager
-        - Services
+        - Referencia a la línea activa
         """
-        self.data_items = {}
-        self.data = []
-        # self._md_lines = None
-
-        # Limpiar undo
-        self.undo_manager.clear_stack()
+        # Limpiar widgets de línea
+        if self.doc_lines_layout:
+            self.doc_lines_layout.clear_widgets()
+        self._line_widgets = {}
 
         # Limpiar estado
         if self.state_manager:
             self.state_manager._clear_all()
 
-        # Resetear services
-        self.line_service = None
-        self.selection_service = None
-        self.navigation_service = None
+        # Resetear referencia a línea activa
+        self.active_line_widget = None
 
         Logger.info("MDDocumentEditorV2: Document initialized")
 
@@ -198,34 +201,21 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
             self.initialize_document()
             return
 
-        # Guardar referencia a md_lines
-        # self._md_lines = md_lines
         md_lines = md_document.md_lines
 
-        # ✅ FASE 1: Inicializar estados
+        # FASE 1: Inicializar estados en el StateManager (crea un LineState por línea)
         self.state_manager.set_document(md_document)
         Logger.info(f"MDDocumentEditorV2: Initialized {len(md_lines)} line states")
 
-        # TODO: SEGUIR Y VER DONDE ASIGNA LAS LINEAS AL WIDGET
-
-        # # ✅ FASE 2: Crear services
-        # TODO: Aplicar Filtros o limpiar filtros existentes?
-
-        # Crea y agrega los Labels doc_lines_layout
-
-        # TODO: Deberia estar en self._refresh_visible_widgets y usar lineas visibles
+        # FASE 2: Construir las filas UNA sola vez, atadas a su LineState.
+        # Limpiar lo anterior para no duplicar (Inc 0).
+        self.doc_lines_layout.clear_widgets()
+        self._line_widgets = {}
 
         for line_state in self.state_manager.get_line_states():
-            
-            print(f"Creating widget for line {line_state.index}: {line_state.get_md_text()[:30]}...")
-            
-            widget_lbl = line_state.widget_type(md_text=line_state.get_md_text())
-            if widget_lbl is None:
-                Logger.warning(f"MDDocumentEditorV2: No widget type for line {line_state.index}, using default MDTextLabel")
-                widget_lbl = MDTextLabel(md_text=line_state.get_md_text())
-
-            self.doc_lines_layout.add_widget(widget_lbl)
-
+            line_widget = MDDocumentLine(line_state)
+            self.doc_lines_layout.add_widget(line_widget)
+            self._line_widgets[line_state.index] = line_widget
 
         Logger.info(f"MDDocumentEditorV2: Document populated with {len(md_lines)} lines")
 
@@ -327,34 +317,14 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         2. Preguntar a StateManager qué líneas renderizar
         3. Delegar actualización a RecycleBoxLayout
         """
-        # Obtener dimensiones actuales
-        scroll_y = self.scroll_y
-        viewport_height = self.height
-
-        # Preguntar al StateManager QUÉ mostrar
-        visible_indices = self.state_manager.get_visible_in_viewport(
-            scroll_y=scroll_y,
-            viewport_height=viewport_height
-        )
-
-        # Delegar actualización al layout
-
-
-        # TODO: Traer desde state_manager las líneas visibles, y luego iterar sobre los widgets en doc_lines_layout para mostrar/ocultar según corresponda. Esto se puede hacer comparando los índices de las líneas con los índices de los widgets actualmente en doc_lines_layout, y mostrando solo aquellos que estén en visible_indices.
-        # self.doc_lines_layout.update_visible_range(visible_indices)  No existe esta funcion. 
-        # Buscar en StateManager qué líneas deberían estar visibles, y luego iterar sobre los widgets en doc_lines_layout para mostrar/ocultar según corresponda. Esto se puede hacer comparando los índices de las líneas con los índices de los widgets actualmente en doc_lines_layout, y mostrando solo aquellos que estén en visible_indices.
-
-        # No se si hacer aca o llamar a populate pasando las lineas a mostar
-        for line_state in self.state_manager.get_line_states():
-            
-            print(f"Creating widget for line {line_state.index}: {line_state.get_md_text()[:30]}...")
-            
-            widget_lbl = line_state.widget_type(md_text=line_state.get_md_text())
-            if widget_lbl is None:
-                Logger.warning(f"MDDocumentEditorV2: No widget type for line {line_state.index}, using default MDTextLabel")
-                widget_lbl = MDTextLabel(md_text=line_state.get_md_text())
-
-            self.doc_lines_layout.add_widget(widget_lbl)
+        # Inc 0: todas las filas viven en el BoxLayout y el ScrollView las
+        # desplaza; no hace falta crear/recrear widgets al scrollear (eso era lo
+        # que duplicaba las líneas). El reciclaje real por viewport (mostrar sólo
+        # las visibles) queda como optimización para un incremento posterior.
+        #
+        # TODO (post Etapa II): usar state_manager.get_visible_in_viewport(...)
+        # para mostrar/ocultar o reciclar sólo las filas dentro del viewport.
+        return
 
     # ========================================================================
     # ACTIVACIÓN DE LÍNEA (Etapa I - Básico)

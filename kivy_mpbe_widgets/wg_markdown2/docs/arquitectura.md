@@ -69,8 +69,15 @@ classDiagram
         +on_type_changed() event
     }
 
+    class MDDocumentLine {
+        <<BoxLayout · Inc 0>>
+        +index: int
+        +line_state: LineState
+        +label: BaseMDLabel
+    }
+
     class MDDocumentLineEditor {
-        <<BoxLayout · ThemableBehavior>>
+        <<BoxLayout · ThemableBehavior · edit stack>>
         +line: MDLine
         +hotlight: bool
         +focused: bool
@@ -112,9 +119,14 @@ classDiagram
     }
 
     MDDocumentEditor --> DocumentStateManager : usa (1)
+    MDDocumentEditor *-- "n" MDDocumentLine : doc_lines_layout
     DocumentStateManager o-- "n" LineState : contiene
     LineState --> MDLine : referencia
     MDDocument o-- "n" MDLine : contiene
+
+    MDDocumentLine *-- BaseMDLabel : label
+    MDDocumentLine ..> LineState : observa (Inc 1/2)
+    MDDocumentLine ..> MDLineEditor : embeberá (Inc 2)
 
     MDDocumentLineEditor *-- MDLineEditor
     MDLineEditor *-- BaseMDLabel : active_label
@@ -123,15 +135,14 @@ classDiagram
     BaseMDLabel <|-- MDTableLabel
     BaseMDLabel <|-- MDSeparatorLabel
 
-    LineState ..> BaseMDLabel : widget_type (hoy)
-    MDDocumentLineEditor ..> LineState : observa (objetivo)
+    LineState ..> BaseMDLabel : widget_type
 ```
 
-> **Hueco actual (lo que falta para editar):** la línea punteada
-> *MDDocumentLineEditor ..> LineState (observa)* todavía **no está conectada**.
-> Hoy el coordinador instancia `BaseMDLabel` (solo lectura) por línea; los
-> widgets editables (`MDLineEditor` / `MDDocumentLineEditor`) existen pero no se
-> usan. Cerrar esa conexión es el objetivo de la Etapa II.
+> **Estado (Inc 0):** el coordinador ya instancia un `MDDocumentLine` por línea
+> (fila liviana que envuelve el label de render y guarda su `LineState`).
+> **Falta para editar:** que `MDDocumentLine` **observe** su `LineState`
+> (reaccionar a `active` en Inc 1 y a `editing` en Inc 2, embebiendo el
+> `MDLineEditor` existente). Esa es la conexión punteada aún pendiente.
 
 ---
 
@@ -200,8 +211,8 @@ Avanzamos **de a uno**, verificando en la app antes de seguir.
 ```mermaid
 flowchart TD
     E1["Etapa I: render + scroll<br/>(labels solo lectura)"]:::done
-    I0["Inc 0: render bound a LineState<br/>+ arreglar duplicación de widgets"]:::wip
-    I1["Inc 1: activación por click<br/>(activate_line + highlight)"]:::todo
+    I0["Inc 0: render bound a LineState<br/>+ arreglar duplicación de widgets"]:::done
+    I1["Inc 1: activación por click<br/>(activate_line + highlight)"]:::wip
     I2["Inc 2: modo edición<br/>(editing → show_editor)"]:::todo
     I3["Inc 3: salir/commit + teclado<br/>(Esc/Enter/flechas)"]:::todo
 
@@ -215,12 +226,13 @@ flowchart TD
 | # | Incremento | Estado | Verificación |
 |---|-----------|--------|--------------|
 | I | Render + scroll (labels) | ✅ Hecho | El documento se ve renderizado |
-| 0 | Render bound a `LineState` + fix duplicación | 🟡 En curso | No se duplican líneas al scrollear |
-| 1 | Activación por click | ⬜ Pendiente | Click resalta la línea; la anterior se apaga |
+| 0 | Render bound a `LineState` + fix duplicación | ✅ Hecho | Cada línea es un `MDDocumentLine` atado a su `LineState`; el scroll ya no duplica |
+| 1 | Activación por click | 🟡 En curso | Click resalta la línea; la anterior se apaga |
 | 2 | Modo edición (`editing` → `show_editor`) | ⬜ Pendiente | Se puede tipear; el texto queda en el documento |
 | 3 | Salir/commit + teclado | ⬜ Pendiente | Esc cancela, Enter confirma, flechas navegan |
 
-### Bugs/incompletos conocidos (a resolver dentro de los incrementos)
-- `populate_md_lines` y `_refresh_visible_widgets` **duplican** widgets (crean sin limpiar) → Inc 0.
-- `activate_line` llama `doc_lines_layout.get_widget(index)`, pero `doc_lines_layout` es un `BoxLayout` plano sin ese método → Inc 1.
-- `initialize_document` usa atributos no inicializados (`undo_manager`, `data`, `line_service`) → revisar al tocar el ciclo de carga.
+### Bugs/incompletos conocidos
+- ✅ ~~`populate_md_lines` y `_refresh_visible_widgets` duplican widgets~~ → resuelto en Inc 0 (construcción única + `_refresh_visible_widgets` no-op).
+- ✅ ~~`initialize_document` usa atributos no inicializados~~ → resuelto en Inc 0 (limpieza segura).
+- `activate_line` llama `doc_lines_layout.get_widget(index)`, pero `doc_lines_layout` es un `BoxLayout` plano sin ese método → **Inc 1** (usar el mapa `_line_widgets`).
+- `load_document()` (camino alternativo, no usado por la app) llama `state_manager._load_document(md_lines)` con argumento, pero el método ya no lo recibe → revisar si se unifica con `populate_md_lines`.
