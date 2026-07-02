@@ -365,9 +365,9 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
                 line = self._line_at(touch.pos)
                 if line is not None:
                     if getattr(touch, 'is_double_tap', False):
-                        self.edit_line(line.index, anim_from=touch.pos)
+                        self.edit_line(line.index)
                     else:
-                        self.activate_line(line.index, anim_from=touch.pos)
+                        self.activate_line(line.index)  # click -> fade
         return handled
 
     def _line_at(self, window_pos):
@@ -377,23 +377,32 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
                 return child
         return None
 
+    def get_line_widget(self, index: int):
+        """
+        Devuelve el widget MDDocumentLine de la línea `index`.
+
+        Punto único de acceso a los widgets de línea (groundwork para el
+        reciclado del Inc 5): hoy devuelve del mapa `_line_widgets`; en el
+        futuro, si la línea no está realizada, hará scroll + la creará.
+        """
+        return self._line_widgets.get(index)
+
     # ========================================================================
     # ACTIVACIÓN DE LÍNEA
     # ========================================================================
 
-    def activate_line(self, index: int, enter_edit_mode: bool = False, anim_from=None):
+    def activate_line(self, index: int, enter_edit_mode: bool = False, direction='fade'):
         """
         Activar una línea (Inc 1).
 
-        Anima la des-selección de la línea previa y la selección de la nueva
-        (verde, expandiéndose desde anim_from). Actualiza el estado en el
-        StateManager (fuente de verdad del flag active).
+        Anima la des-selección de la línea previa y la selección de la nueva.
+        Actualiza el estado en el StateManager (fuente de verdad del flag active).
 
         Args:
             index: Índice de la línea a activar
             enter_edit_mode: Si debe entrar en modo edición (Inc 2)
-            anim_from: Posición (coords de ventana) desde donde expandir la
-                animación de selección. Si es None, se anima desde el centro.
+            direction: Animación de selección: 'fade' (click) o 'up'/'down'
+                (navegación con flechas, deslizamiento).
         """
         old_index = self.state_manager.get_active_index()
         if old_index == index:
@@ -401,9 +410,9 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
 
         # Animar salida de la línea previa
         if old_index is not None:
-            old_widget = self._line_widgets.get(old_index)
+            old_widget = self.get_line_widget(old_index)
             if old_widget is not None:
-                old_widget.unselect(anim_from)
+                old_widget.unselect(direction)
 
         # Actualizar estado (fuente de verdad)
         ok = self.state_manager.activate_line(index, enter_edit=enter_edit_mode)
@@ -411,14 +420,18 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
             return
 
         # Animar entrada de la nueva línea
-        new_widget = self._line_widgets.get(index)
+        new_widget = self.get_line_widget(index)
         if new_widget is not None:
-            new_widget.select(anim_from)
+            new_widget.select(direction)
         self.active_line_widget = new_widget
+
+        # Tomar el foco de teclado para que las flechas naveguen (Inc 3a).
+        # (El manejo fino de foco entre paneles es el Inc 4.)
+        self.focus = True
 
         Logger.debug(f"MDDocumentEditor: Activated line {index}")
 
-    def edit_line(self, index: int, anim_from=None):
+    def edit_line(self, index: int):
         """
         Entrar en modo edición de una línea (Inc 2).
 
@@ -426,7 +439,7 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         editing=True en el LineState; el MDDocumentLine reacciona mostrando
         el editor en overlay.
         """
-        self.activate_line(index, anim_from=anim_from)  # selecciona si no lo estaba
+        self.activate_line(index)  # selecciona si no lo estaba (fade)
         self.state_manager.update_state(index, editing=True)
         Logger.debug(f"MDDocumentEditor: Editing line {index}")
 
@@ -444,22 +457,58 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
 
     def keyboard_on_key_down(self, window, keycode, text, modifiers):
         """
-        Manejo de eventos de teclado.
+        Manejo de eventos de teclado del editor.
 
-        Etapa I: Placeholder (no funcional todavía)
-        Etapa II: Arrow Up/Down, Page Up/Down, etc.
+        Sólo se dispara cuando el editor tiene el foco (es decir, NO se está
+        editando una línea: en edición el foco lo tiene el MDLineTextInput y
+        las flechas mueven el cursor del texto).
+
+        Inc 3a: navegación con flechas ↑/↓.
 
         Args:
-            window: Ventana de Kivy
-            keycode: Código de tecla (int, str)
-            text: Texto de la tecla
-            modifiers: Modificadores (Shift, Ctrl, Alt)
+            keycode: (código_int, nombre_str) de la tecla.
 
         Returns:
-            bool: True si se manejó el evento, False si no
+            bool: True si se manejó el evento.
         """
-        # TODO Etapa II: Implementar navegación con teclado
-        return False
+        key_name = keycode[1] if isinstance(keycode, (tuple, list)) else keycode
+
+        if key_name == 'up':
+            return self._navigate(-1)
+        elif key_name == 'down':
+            return self._navigate(1)
+
+        return super().keyboard_on_key_down(window, keycode, text, modifiers)
+
+    def _navigate(self, delta: int) -> bool:
+        """
+        Mueve la línea activa `delta` posiciones (+1 abajo, -1 arriba) y la
+        mantiene visible. Devuelve True (evento consumido).
+        """
+        total = self.state_manager.get_total_lines()
+        if total == 0:
+            return False
+
+        current = self.state_manager.get_active_index()
+        if current is None:
+            target = 0 if delta > 0 else total - 1
+        else:
+            target = current + delta
+
+        if not (0 <= target < total):
+            return True  # en el borde: consumido, sin cambio
+
+        # Slide en la dirección de la navegación
+        direction = 'down' if delta > 0 else 'up'
+        self.activate_line(target, direction=direction)
+        self._scroll_to_line(target)
+        return True
+
+    def _scroll_to_line(self, index: int):
+        """Scrollea para que la línea `index` quede visible en el viewport."""
+        widget = self.get_line_widget(index)
+        if widget is not None:
+            self.scroll_to(widget, padding=dp(10), animate=True)
 
     # ========================================================================
     # UTILIDADES

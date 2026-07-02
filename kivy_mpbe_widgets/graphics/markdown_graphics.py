@@ -223,8 +223,24 @@ class GSelectItem(InstructionGroup):
         self._gr_rectangle = None
         # Inicializacion del grafico
         self._draw()
-        # Eventos
-        # self._widget.bind(pos=self.update_graphics, size=self.update_graphics)
+        # Estado y seguimiento del widget (para acompañar scroll/resize)
+        self._selected = False
+        self._animating = False
+        self._widget.bind(pos=self._follow_widget, size=self._follow_widget)
+
+    def _follow_widget(self, *args):
+        """El rectángulo acompaña al widget (scroll/resize) mientras está seleccionado."""
+        if self._animating or not self._selected or self._gr_rectangle is None:
+            return
+        self._gr_rectangle.pos = self._widget.pos
+        self._gr_rectangle.size = self._widget.size
+
+    def _anim_done(self, *args):
+        """Al terminar la animación, fija el rect al widget si quedó seleccionado."""
+        self._animating = False
+        if self._selected and self._gr_rectangle is not None:
+            self._gr_rectangle.pos = self._widget.pos
+            self._gr_rectangle.size = self._widget.size
 
     # Propiedades de la animacion -------------------------------------------------------
     def _set_alpha_color(self, value):
@@ -268,8 +284,10 @@ class GSelectItem(InstructionGroup):
 
     # Funciones de Animación -------------------------------------------------
     def show(self, value):
-        '''Muestra el o Esconde el rectangulo sin animacion'''
+        '''Muestra o esconde el rectangulo sin animacion'''
+        self._selected = bool(value)
         self._gr_rectangle.size = self._widget.size
+        self._gr_rectangle.pos = self._widget.pos
         self._alpha_color = 1.0 if value else 0.0
 
     def animate_fade(self, selected:bool):
@@ -279,46 +297,48 @@ class GSelectItem(InstructionGroup):
         Args:
             selected(bool): Indica el estado de la seleccion
         """
+        self._selected = selected
         alpha = 1.0 if selected else 0.0
-        # Animation.cancel_all(self, '_alpha_color', '_size_h') # Cancelar animaciones previas
         # Inicia la animacion
         self._gr_rectangle.size = self._widget.size
         self._gr_rectangle.pos = self._widget.pos
         anim = Animation(_alpha_color=alpha, d=self.duration, t='out_quad')
+        self._animating = True
+        anim.bind(on_complete=self._anim_done)
         anim.start(self)
 
     def animate_up(self, selected:bool):
         """
         Anima la selección desde abajo hacia arriba.
         """
-        # Animation.cancel_all(self, '_alpha_color', '_size_h') # Cancelar animaciones previas
-        # Define las variables de base
+        self._selected = selected
         self._alpha_color = 1
         if selected is True:
-            # Anima la altura
+            # Crece desde abajo hacia arriba
+            self._pos_y = self._widget.y
             self._size_h = 0
             anim = Animation(_size_h=self._widget.height, d=self.duration, t='out_quad')
-            anim.start(self)
         else:
             pos_y = self._widget.y + self._widget.height
             anim = Animation(_size_h=0.0, _pos_y=pos_y, d=self.duration, t='out_quad')
-            anim.start(self)
+        self._animating = True
+        anim.bind(on_complete=self._anim_done)
+        anim.start(self)
 
     def animate_down(self, selected:bool):
         """
         Anima la selección desde arriba hacia abajo.
         """
-        # Animation.cancel_all(self, '_alpha_color', '_size_h') # Cancelar animaciones previasAnimation.cancel_all(self, 'alpha_color') # Cancelar animaciones previas
-        # Define las variables de base
+        self._selected = selected
         self._alpha_color = 1
         if selected is True:
-            pp = self._pos_y
+            # Crece desde arriba hacia abajo
             self._pos_y = self._widget.y + self._widget.height
             self._size_h = 0
-            # Anima la altura y la posicion y
             anim = Animation(_size_h=self._widget.height, _pos_y=self._widget.y, d=self.duration, t='out_quad')
-            anim.start(self)
         else:
             anim = Animation(_size_h=0.0, d=self.duration, t='out_quad')
-            anim.start(self)
+        self._animating = True
+        anim.bind(on_complete=self._anim_done)
+        anim.start(self)
 

@@ -39,8 +39,8 @@ combinaciones de teclado/mouse** del editor V2, con columnas de **sub-tarea** y
 
 | Acción | Modo | Descripción | Método Origen | EventType | Método Receptor | Estado |
 |---|---|---|---|---|---|---|
-| ↑ | False | Selecciona la línea superior, deselecciona la actual | `_handle_arrow_up()` | CHANGED | `_on_navigation()` | ⬜ |
-| ↓ | False | Selecciona la línea inferior, deselecciona la actual | `_handle_arrow_down()` | CHANGED | `_on_navigation()` | ⬜ |
+| ↑ | False | Selecciona la línea superior, deselecciona la actual (slide up) | `_navigate(-1)` | CHANGED | `activate_line()` | ✅ |
+| ↓ | False | Selecciona la línea inferior, deselecciona la actual (slide down) | `_navigate(+1)` | CHANGED | `activate_line()` | ✅ |
 | Page Up | T/F | Página arriba | `_handle_page_up()` | CHANGED | `_on_navigation()` | ⬜ |
 | Page Down | T/F | Página abajo | `_handle_page_down()` | CHANGED | `_on_navigation()` | ⬜ |
 | Ctrl+Home | T/F | Ir al inicio del documento | `_handle_home()` | CHANGED | `_on_navigation()` | ⬜ |

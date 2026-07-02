@@ -27,7 +27,8 @@ from kivy.clock import Clock
 from kivy.properties import NumericProperty, ObjectProperty
 
 from kivy_mpbe_widgets.theming import ThemableBehavior
-from kivy_mpbe_widgets.graphics.items_graphics import GSelectItem, GHotlightItem
+from kivy_mpbe_widgets.graphics.items_graphics import GHotlightItem
+from kivy_mpbe_widgets.graphics.markdown_graphics import GSelectItem
 from kivy_mpbe_widgets.wg_markdown2.widgets.md_labels import MDTextLabel
 from kivy_mpbe_widgets.wg_markdown2.widgets.md_inputs import MDLineTextInput
 
@@ -120,15 +121,29 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
             self.line_state.hotlight = state
 
     # -------------------------------------------------------- selección (Inc 1)
-    def select(self, anim_from=None):
-        """Anima la selección (verde) expandiéndose desde anim_from (o el centro)."""
-        pos = anim_from if anim_from is not None else self.center
-        self.graphic_select.animate_select(True, pos)
+    def select(self, direction='fade'):
+        """
+        Anima la selección de la línea.
 
-    def unselect(self, anim_from=None):
-        """Anima la des-selección de la línea."""
-        pos = anim_from if anim_from is not None else self.center
-        self.graphic_select.animate_select(False, pos)
+        Args:
+            direction: 'fade' (click, aparición por fade), 'up' o 'down'
+                (navegación con flechas, deslizamiento hacia arriba/abajo).
+        """
+        if direction == 'up':
+            self.graphic_select.animate_up(True)
+        elif direction == 'down':
+            self.graphic_select.animate_down(True)
+        else:
+            self.graphic_select.animate_fade(True)
+
+    def unselect(self, direction='fade'):
+        """Anima la des-selección de la línea (misma dirección que la selección)."""
+        if direction == 'up':
+            self.graphic_select.animate_up(False)
+        elif direction == 'down':
+            self.graphic_select.animate_down(False)
+        else:
+            self.graphic_select.animate_fade(False)
 
     # --------------------------------------------------------- edición (Inc 2)
     def _on_editing(self, instance, value):
