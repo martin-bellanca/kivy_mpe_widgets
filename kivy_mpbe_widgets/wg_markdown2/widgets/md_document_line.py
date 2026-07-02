@@ -53,7 +53,8 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
     index = NumericProperty(0)
     line_state = ObjectProperty(None, allownone=True)
 
-    def __init__(self, line_state, placement=EDITOR_PLACEMENT_OVERLAY, **kwargs):
+    def __init__(self, line_state, placement=EDITOR_PLACEMENT_OVERLAY,
+                 doc_editor=None, **kwargs):
         kwargs.setdefault('orientation', 'horizontal')
         kwargs.setdefault('size_hint_y', None)
         BoxLayout.__init__(self, **kwargs)
@@ -62,6 +63,9 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         self.line_state = line_state
         self.index = line_state.index
         self.placement = placement
+        # Referencia al coordinador (para devolverle el foco de teclado al salir
+        # de edición por Escape/Enter, y que las flechas sigan funcionando).
+        self._doc_editor = doc_editor
 
         # Gráficos de selección (verde animado) y hover (líneas verticales azules).
         with self.canvas.before:
@@ -213,17 +217,42 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         self.label.md_text = value  # render en tiempo real
 
     def _on_editor_focus(self, instance, value):
-        """Perder el foco confirma la edición."""
-        if not value and self.line_state.editing:
+        """
+        Al perder el foco, cierra la edición — pero DIFERIDO un frame.
+
+        Se difiere para que, si la salida es por Escape, el handler síncrono de
+        Escape corra primero (cancela + devuelve el foco) y este commit quede
+        sin efecto. Si la salida es por click en otro panel, el commit diferido
+        cierra la edición normalmente.
+        """
+        if not value:
+            Clock.schedule_once(self._commit_on_focus_loss, 0)
+
+    def _commit_on_focus_loss(self, dt):
+        if self.line_state.editing:
             self._commit()
 
     def _on_editor_validate(self, instance):
         """Enter confirma la edición (input multiline=False)."""
         self._commit()
+        self._refocus_editor()  # devolver el foco al coordinador (flechas)
 
     def _commit(self):
         """Confirma la edición (el texto ya está persistido)."""
         self.line_state.editing = False
+
+    def _refocus_editor(self):
+        """
+        Devuelve el foco de teclado al MDDocumentEditor tras salir de edición
+        por teclado (Escape/Enter), para que ↑/↓ sigan funcionando.
+
+        Diferido con Clock para no chocar con el evento de tecla en curso. No
+        se usa en la salida por pérdida de foco (click en otro panel), para no
+        robarle el foco a ese panel.
+        """
+        if self._doc_editor is not None:
+            Clock.schedule_once(
+                lambda dt: setattr(self._doc_editor, 'focus', True), 0)
 
     def _on_key_down(self, window, key, scancode, codepoint, modifier):
         """Escape cancela y restaura el texto original."""
@@ -234,5 +263,6 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
             if self.editor is not None:
                 self.editor.text = self._edit_original
             self.line_state.editing = False
+            self._refocus_editor()  # devolver el foco al coordinador (flechas)
             return True
         return False
