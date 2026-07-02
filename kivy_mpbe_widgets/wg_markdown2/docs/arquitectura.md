@@ -8,6 +8,10 @@ Este es el documento **vivo**: refleja el código real y se actualiza en cada
 incremento. El diseño original (con detalles ya superados) está en
 [MDDocumentEditor_V2_Arquitectura.md](MDDocumentEditor_V2_Arquitectura.md).
 
+**Docs relacionados:**
+- [tabla_eventos.md](tabla_eventos.md) — todas las combinaciones de teclado/mouse con sub-tarea y estado.
+- [ref_MDDocumentLineEditor.md](ref_MDDocumentLineEditor.md) — diagrama de clases del stack de edición viejo (referencia para reusar piezas).
+
 > Los diagramas son **Mermaid**. Se renderizan en GitHub y en VS Code con la
 > extensión *Markdown Preview Mermaid Support*.
 
@@ -215,8 +219,10 @@ flowchart TD
     I1["Inc 1: hover + selección por click<br/>(GHotlightItem + GSelectItem)"]:::done
     I2["Inc 2: modo edición<br/>(overlay/below + MDLineTextInput)"]:::done
     I3["Inc 3: teclado + navegación<br/>(flechas / Enter nueva línea)"]:::wip
+    I4["Inc 4: control del foco de la App<br/>(coordina foco entre paneles/editor)"]:::todo
+    I5["Inc 5: sistema de reciclado propio<br/>(solo realiza líneas visibles)"]:::todo
 
-    E1 --> I0 --> I1 --> I2 --> I3
+    E1 --> I0 --> I1 --> I2 --> I3 --> I4 --> I5
 
     classDef done fill:#bce6bc,stroke:#2e7d32,color:#000;
     classDef wip fill:#ffe9a8,stroke:#b8860b,color:#000;
@@ -229,7 +235,15 @@ flowchart TD
 | 0 | Render bound a `LineState` + fix duplicación | ✅ Hecho | Cada línea es un `MDDocumentLine` atado a su `LineState`; el scroll ya no duplica |
 | 1 | Hover + selección por click | ✅ Hecho | Hover = 2 líneas verticales azules (GHotlightItem); click = selección verde animada desde el click (GSelectItem); la rueda del mouse no selecciona |
 | 2 | Modo edición (doble-click) | ✅ Hecho | Doble-click edita; `MDLineTextInput` en overlay translúcido o debajo del label (config `editor_placement`); render en vivo; Enter/foco confirma, Esc cancela |
-| 3 | Teclado + navegación | 🟡 En curso | Flechas mueven la línea activa; Enter inserta línea; etc. |
+| 3 | Teclado + navegación | 🟡 En curso | Subdividido en **3a–3e** (nav básica, edición por teclado, edición estructural, nav por títulos, selección múltiple). Detalle y seguimiento en [tabla_eventos.md](tabla_eventos.md) |
+| 4 | Control del foco de la App | ⬜ Pendiente | El foco se coordina entre paneles (árbol, archivos, editor) y la línea/editor activos |
+| 5 | Sistema de reciclado propio | ⬜ Pendiente | Sólo se realizan las líneas visibles en el viewport (adaptado al proyecto); scroll fluido en documentos grandes |
+
+> **Nota de diseño (para no generar retrabajo en Inc 3/4):** todo acceso a un
+> widget de línea debe pasar por un único helper (p. ej. `get_line_widget(index)` /
+> `ensure_line_widget(index)`). Hoy devuelve del mapa `_line_widgets`; en el Inc 5
+> ese helper hará scroll + realizará el widget si la línea no está en pantalla.
+> Así el reciclado toca un solo punto y Inc 3/4 quedan "a prueba de reciclado".
 
 ### Bugs/incompletos conocidos
 - ✅ ~~`populate_md_lines` y `_refresh_visible_widgets` duplican widgets~~ → resuelto en Inc 0 (construcción única + `_refresh_visible_widgets` no-op).
