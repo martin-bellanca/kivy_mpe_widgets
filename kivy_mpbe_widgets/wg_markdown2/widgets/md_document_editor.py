@@ -24,6 +24,7 @@ from logging import ERROR
 from typing import Optional
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.behaviors import FocusBehavior
+from kivy.core.window import Window
 from kivy.properties import ObjectProperty
 from kivy.logger import Logger
 from kivy.clock import Clock
@@ -154,6 +155,13 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         # ====================================================================
         self.bind(scroll_y=self._on_scroll)
         self.bind(size=self._on_size_changed)
+
+        # Teclado a nivel Window (enfoque robusto, como el editor viejo): así la
+        # navegación no depende de que el widget tenga el foco de Kivy (evita que
+        # se rompa al salir de edición con Escape/Enter). Gateado por _kbd_active
+        # (documento en uso) y por NO estar editando.
+        self._kbd_active = False
+        Window.bind(on_key_down=self._on_window_key_down)
 
         Logger.info("MDDocumentEditor: Initialized")
 
@@ -426,9 +434,9 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
             new_widget.select(direction)
         self.active_line_widget = new_widget
 
-        # Tomar el foco de teclado para que las flechas naveguen (Inc 3a).
-        # (El manejo fino de foco entre paneles es el Inc 4.)
-        self.focus = True
+        # Marca este documento como destino del teclado para que las flechas
+        # naveguen (el handler está a nivel Window). Foco fino entre paneles = Inc 4.
+        self._kbd_active = True
 
         Logger.debug(f"MDDocumentEditor: Activated line {index}")
 
@@ -456,35 +464,59 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
     # EVENTOS DE TECLADO (Etapa II)
     # ========================================================================
 
-    def keyboard_on_key_down(self, window, keycode, text, modifiers):
+    # Key codes de Kivy para navegación
+    _K_UP, _K_DOWN = 273, 274
+    _K_PAGEUP, _K_PAGEDOWN = 280, 281
+    _K_HOME, _K_END = 278, 279
+
+    def _is_editing(self) -> bool:
+        """True si la línea activa está en modo edición."""
+        idx = self.state_manager.get_active_index()
+        if idx is None:
+            return False
+        state = self.state_manager.get_state(idx)
+        return bool(state and state.editing)
+
+    def _on_window_key_down(self, window, key, scancode, codepoint, modifiers):
         """
-        Manejo de eventos de teclado del editor.
+        Navegación por teclado a nivel Window (Inc 3a).
 
-        Sólo se dispara cuando el editor tiene el foco (es decir, NO se está
-        editando una línea: en edición el foco lo tiene el MDLineTextInput y
-        las flechas mueven el cursor del texto).
-
-        Inc 3a: navegación con flechas ↑/↓.
+        No depende de que el widget tenga el foco de Kivy (por eso sobrevive a
+        salir de edición con Escape/Enter). Sólo responde si el documento está
+        en uso (`_kbd_active`) y NO se está editando (en edición las teclas van
+        al MDLineTextInput).
 
         Args:
-            keycode: (código_int, nombre_str) de la tecla.
+            key: código entero de la tecla.
+            modifiers: lista de modificadores ('ctrl', 'shift', 'alt').
 
         Returns:
             bool: True si se manejó el evento.
         """
-        key_name = keycode[1] if isinstance(keycode, (tuple, list)) else keycode
+        if not self._kbd_active or self._is_editing():
+            return False
+        mods = modifiers or []
 
-        if key_name == 'up':
+        if key == self._K_UP:
             return self._navigate(-1)
-        elif key_name == 'down':
+        elif key == self._K_DOWN:
             return self._navigate(1)
-
-        return super().keyboard_on_key_down(window, keycode, text, modifiers)
+        elif key == self._K_PAGEUP:
+            return self._navigate(-self._page_size())
+        elif key == self._K_PAGEDOWN:
+            return self._navigate(self._page_size())
+        elif key == self._K_HOME and 'ctrl' in mods:
+            self._go_to_line(0, 'up')
+            return True
+        elif key == self._K_END and 'ctrl' in mods:
+            self._go_to_line(self.state_manager.get_total_lines() - 1, 'down')
+            return True
+        return False
 
     def _navigate(self, delta: int) -> bool:
         """
-        Mueve la línea activa `delta` posiciones (+1 abajo, -1 arriba) y la
-        mantiene visible. Devuelve True (evento consumido).
+        Mueve la línea activa `delta` posiciones (+ abajo, - arriba), clampando
+        a los bordes. Devuelve True (evento consumido).
         """
         total = self.state_manager.get_total_lines()
         if total == 0:
@@ -496,14 +528,34 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         else:
             target = current + delta
 
-        if not (0 <= target < total):
-            return True  # en el borde: consumido, sin cambio
-
-        # Slide en la dirección de la navegación
         direction = 'down' if delta > 0 else 'up'
-        self.activate_line(target, direction=direction)
-        self._scroll_to_line(target)
+        self._go_to_line(target, direction)
         return True
+
+    def _go_to_line(self, target: int, direction: str = 'fade'):
+        """
+        Activa la línea `target` (clampada a [0, total-1]) y la mantiene visible.
+        Si ya es la activa, sólo asegura que esté a la vista.
+        """
+        total = self.state_manager.get_total_lines()
+        if total == 0:
+            return
+        target = max(0, min(target, total - 1))
+        if target != self.state_manager.get_active_index():
+            self.activate_line(target, direction=direction)
+        self._scroll_to_line(target)
+
+    def _page_size(self) -> int:
+        """
+        Cantidad de líneas por 'página' ≈ alto del viewport / alto de línea,
+        con un solapamiento de una línea. Mínimo 1.
+        """
+        ref_h = 30.0
+        active = self.state_manager.get_active_index()
+        widget = self.get_line_widget(active if active is not None else 0)
+        if widget is not None and widget.height > 0:
+            ref_h = widget.height
+        return max(1, int(self.height / ref_h) - 1)
 
     def _scroll_to_line(self, index: int):
         """Scrollea para que la línea `index` quede visible en el viewport."""

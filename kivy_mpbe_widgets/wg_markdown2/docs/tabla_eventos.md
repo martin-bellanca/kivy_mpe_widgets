@@ -41,10 +41,15 @@ combinaciones de teclado/mouse** del editor V2, con columnas de **sub-tarea** y
 |---|---|---|---|---|---|---|
 | ↑ | False | Selecciona la línea superior, deselecciona la actual (slide up) | `_navigate(-1)` | CHANGED | `activate_line()` | ✅ |
 | ↓ | False | Selecciona la línea inferior, deselecciona la actual (slide down) | `_navigate(+1)` | CHANGED | `activate_line()` | ✅ |
-| Page Up | T/F | Página arriba | `_handle_page_up()` | CHANGED | `_on_navigation()` | ⬜ |
-| Page Down | T/F | Página abajo | `_handle_page_down()` | CHANGED | `_on_navigation()` | ⬜ |
-| Ctrl+Home | T/F | Ir al inicio del documento | `_handle_home()` | CHANGED | `_on_navigation()` | ⬜ |
-| Ctrl+End | T/F | Ir al final del documento | `_handle_end()` | CHANGED | `_on_navigation()` | ⬜ |
+| Page Up | False | Página arriba | `_navigate(-page)` | CHANGED | `activate_line()` | ✅ |
+| Page Down | False | Página abajo | `_navigate(+page)` | CHANGED | `activate_line()` | ✅ |
+| Ctrl+Home | False | Ir al inicio del documento | `_go_to_line(0)` | CHANGED | `activate_line()` | ✅ |
+| Ctrl+End | False | Ir al final del documento | `_go_to_line(last)` | CHANGED | `activate_line()` | ✅ |
+
+> Teclado a nivel `Window` (`_on_window_key_down`), gateado por `_kbd_active` y
+> `not _is_editing()`. Enfoque robusto tomado del editor viejo: la navegación no
+> depende de que el widget tenga el foco de Kivy (por eso funciona tras salir de
+> edición con Escape/Enter).
 
 > Groundwork del Inc 3a: helper `get_line_widget(index)`, foco de teclado en el
 > editor, y scroll para mantener visible la línea activa. Animación de selección
