@@ -1,8 +1,8 @@
 # MDDocumentEditor V2 — Arquitectura (documento vivo)
 
 **Módulo:** `kivy_mpbe_widgets/wg_markdown2`
-**Última actualización:** 2026-06-30
-**Estado:** Etapa I completa · Etapa II (edición) en progreso
+**Última actualización:** 2026-07-02
+**Estado:** Etapa I completa · Etapa II (edición) en progreso (Inc 0-2 + 3a hechos)
 
 Este es el documento **vivo**: refleja el código real y se actualiza en cada
 incremento. El diseño original (con detalles ya superados) está en
@@ -27,13 +27,15 @@ classDiagram
         <<ScrollView · FocusBehavior · ThemableBehavior>>
         +state_manager: DocumentStateManager
         +doc_lines_layout: BoxLayout
-        +active_line_widget
+        +editor_placement str
         +populate_md_lines(md_document)
-        +load_document(md_document)
-        +activate_line(index, enter_edit_mode)
-        +deactivate_current_line()
-        +keyboard_on_key_down() placeholder
-        -_refresh_visible_widgets()
+        +activate_line(index, direction)
+        +edit_line(index)
+        +get_line_widget(index)
+        +on_touch_down / on_touch_up
+        -_on_window_key_down() nav teclado
+        -_navigate / _go_to_line / _page_size
+        -_is_editing()
     }
 
     class DocumentStateManager {
@@ -218,7 +220,7 @@ flowchart TD
     I0["Inc 0: render bound a LineState<br/>+ arreglar duplicación de widgets"]:::done
     I1["Inc 1: hover + selección por click<br/>(GHotlightItem + GSelectItem)"]:::done
     I2["Inc 2: modo edición<br/>(overlay/below + MDLineTextInput)"]:::done
-    I3["Inc 3: teclado + navegación<br/>(flechas / Enter nueva línea)"]:::wip
+    I3["Inc 3: teclado + navegación<br/>3a ✅ (flechas/PageUp-Down/Home-End) · 3b-e ⬜"]:::wip
     I4["Inc 4: control del foco de la App<br/>(coordina foco entre paneles/editor)"]:::todo
     I5["Inc 5: sistema de reciclado propio<br/>(solo realiza líneas visibles)"]:::todo
 
@@ -235,7 +237,7 @@ flowchart TD
 | 0 | Render bound a `LineState` + fix duplicación | ✅ Hecho | Cada línea es un `MDDocumentLine` atado a su `LineState`; el scroll ya no duplica |
 | 1 | Hover + selección por click | ✅ Hecho | Hover = 2 líneas verticales azules (GHotlightItem); click = selección verde animada desde el click (GSelectItem); la rueda del mouse no selecciona |
 | 2 | Modo edición (doble-click) | ✅ Hecho | Doble-click edita; `MDLineTextInput` en overlay translúcido o debajo del label (config `editor_placement`); render en vivo; Enter/foco confirma, Esc cancela |
-| 3 | Teclado + navegación | 🟡 En curso | Subdividido en **3a–3e** (nav básica, edición por teclado, edición estructural, nav por títulos, selección múltiple). Detalle y seguimiento en [tabla_eventos.md](tabla_eventos.md) |
+| 3 | Teclado + navegación | 🟡 En curso | **3a ✅** (↑↓, PageUp/Down, Ctrl+Home/End — a nivel Window). Faltan **3b-3e** (edición por teclado, estructural, títulos, selección múltiple). Detalle y seguimiento en [tabla_eventos.md](tabla_eventos.md) |
 | 4 | Control del foco de la App | ⬜ Pendiente | El foco se coordina entre paneles (árbol, archivos, editor) y la línea/editor activos |
 | 5 | Sistema de reciclado propio | ⬜ Pendiente | Sólo se realizan las líneas visibles en el viewport (adaptado al proyecto); scroll fluido en documentos grandes |
 
