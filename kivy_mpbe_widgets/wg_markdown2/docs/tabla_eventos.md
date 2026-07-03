@@ -64,10 +64,10 @@ combinaciones de teclado/mouse** del editor V2, con columnas de **sub-tarea** y
 | Enter | False | Entra en modo edición de la línea activa (como F2) | `_edit_active_line()` (Window) | ✅ |
 | F2 | False | Entra en modo edición de la línea activa | `_edit_active_line()` (Window) | ✅ |
 | F2 | True | Sale de edición (toggle, confirma) | `_on_editor_nav()` (input) | ✅ |
-| ↑ | True | Línea superior manteniendo la columna del cursor | `_handle_arrow_up()` | ⬜ |
-| ↓ | True | Línea inferior manteniendo la columna del cursor | `_handle_arrow_down()` | ⬜ |
-| ← | True | Si está al inicio, pasa la edición a la línea anterior (cursor al final) | `_handle_arrow_left()` | ⬜ |
-| → | True | Si está al final, pasa la edición a la línea siguiente (cursor al inicio) | `_handle_arrow_right()` | ⬜ |
+| ↑ | True | Línea superior manteniendo la columna del cursor | `_on_editor_nav()`→`_on_line_edit_nav()` | ✅ |
+| ↓ | True | Línea inferior manteniendo la columna del cursor | `_on_editor_nav()`→`_on_line_edit_nav()` | ✅ |
+| ← | True | Si está al inicio, pasa la edición a la línea anterior (cursor al final) | `_on_editor_nav()`→`_on_line_edit_nav()` | ✅ |
+| → | True | Si está al final, pasa la edición a la línea siguiente (cursor al inicio) | `_on_editor_nav()`→`_on_line_edit_nav()` | ✅ |
 
 ## Inc 3c — Edición estructural (insertar / borrar / mover)
 

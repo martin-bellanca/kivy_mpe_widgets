@@ -93,9 +93,15 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         # Editor (se crea perezosamente al entrar en edición)
         self.editor = None
         self._edit_original = None
-        # Hint de posición del cursor al entrar en edición (coords de ventana
-        # del click). None → cursor al final. Se consume al posicionarse.
+        # Hint del cursor al entrar en edición. Se consumen al posicionarse:
+        # - _edit_click_pos: coords de ventana del click (prioridad).
+        # - _edit_cursor_col: columna destino (saltos de línea en edición).
+        # Ambos None → cursor al final.
         self._edit_click_pos = None
+        self._edit_cursor_col = None
+        # Callback coordinador para saltar la edición a otra línea
+        # (index, delta, cursor_col) -> bool. Lo setea MDDocumentEditor.
+        self.on_edit_nav = None
 
         # Observa el modo edición y los cambios de tipo del LineState
         self.line_state.bind(editing=self._on_editing,
@@ -234,15 +240,18 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         # Escape para cancelar
         Window.bind(on_key_down=self._on_key_down)
 
-    def set_edit_cursor_hint(self, window_pos):
+    def set_edit_cursor_hint(self, window_pos, cursor_col=None):
         """
         Fija dónde ubicar el cursor al entrar en edición.
 
         Args:
             window_pos: posición (x, y) en coords de ventana del click que
-                origina la edición, o None para cursor al final del texto.
+                origina la edición (prioridad si viene).
+            cursor_col: columna destino (para saltos de línea en edición).
+            Ambos None → cursor al final del texto.
         """
         self._edit_click_pos = window_pos
+        self._edit_cursor_col = cursor_col
 
     def _place_cursor(self, dt):
         """
@@ -260,6 +269,7 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         if self.editor is None:
             return
         click_pos, self._edit_click_pos = self._edit_click_pos, None
+        col, self._edit_cursor_col = self._edit_cursor_col, None
         if click_pos is not None:
             x, y = self.editor.to_widget(*click_pos)
             # Distancia al inicio del texto renderizado (label e input
@@ -269,6 +279,8 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
             x = (self.editor.x + cx + self.editor.padding[0]
                  + self._hidden_prefix_width())
             self.editor.cursor = self.editor.get_cursor_from_xy(x, y)
+        elif col is not None:
+            self.editor.cursor = (max(0, min(col, len(self.editor.text))), 0)
         else:
             self.editor.cursor = (len(self.editor.text), 0)
 
@@ -297,6 +309,8 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
 
     # Key codes de las teclas de edición interceptadas en el input
     _K_F2 = 283
+    _K_UP, _K_DOWN = 273, 274
+    _K_LEFT, _K_RIGHT = 276, 275
 
     def _on_editor_nav(self, keycode, modifiers):
         """
@@ -305,18 +319,47 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         la tecla (no la procesa el TextInput).
 
         Inc 3b.2: F2 sale de edición (confirma, como Enter/foco-fuera).
-        Inc 3b.3: ↑↓←→ para saltar de línea (delegará en el coordinador).
+        Inc 3b.3: saltos de línea en edición —
+          ↑/↓ mueven la edición manteniendo la columna del cursor;
+          ←/→ en el borde de la línea pasan a la anterior/siguiente
+          (cursor al final/inicio). Si no está en el borde, ←/→ mueven
+          el cursor dentro del input (no se consumen).
         """
         key = keycode[0]
         if key == self._K_F2:
             self._commit()
             return True
+        if key == self._K_UP:
+            return self._request_edit_move(-1, self.editor.cursor_col)
+        if key == self._K_DOWN:
+            return self._request_edit_move(1, self.editor.cursor_col)
+        if key == self._K_LEFT and self.editor.cursor_index() == 0:
+            return self._request_edit_move(-1, 'end')
+        if key == self._K_RIGHT and self.editor.cursor_index() == len(self.editor.text):
+            return self._request_edit_move(1, 'start')
         return False
+
+    def _request_edit_move(self, delta, cursor_col):
+        """
+        Pide al coordinador mover la edición `delta` líneas, con la columna
+        destino `cursor_col` (int, 'end' o 'start'). Consume la tecla.
+
+        Diferido un frame: estamos dentro del keyboard callback del input
+        actual, que se destruye al cambiar de línea; hacer el cambio de foco
+        acá mismo reentraría el manejo de foco/teclado.
+        """
+        if self.on_edit_nav is None:
+            return False
+        index = self.index
+        Clock.schedule_once(
+            lambda dt: self.on_edit_nav(index, delta, cursor_col), 0)
+        return True
 
     def _exit_edit(self):
         """Quita el editor y deja el label con el texto actual re-renderizado."""
         Window.unbind(on_key_down=self._on_key_down)
         self._edit_click_pos = None
+        self._edit_cursor_col = None
         if self.editor is not None and self.editor.parent is not None:
             self.editor.focus = False
             self._cell.remove_widget(self.editor)

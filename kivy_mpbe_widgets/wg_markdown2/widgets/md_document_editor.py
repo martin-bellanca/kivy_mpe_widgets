@@ -94,6 +94,12 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         self.editor_placement = EDITOR_PLACEMENT_BELOW
         # self.md_document: Optional[MDDocument] = None  md_document esta en state_manager?
         self.last_scroll_y = 1.0
+        # Columna objetivo del cursor en edición (goal column): se mantiene al
+        # saltar ↑/↓ por líneas cortas y se reubica al moverse horizontal.
+        # _edit_last_placed = columna real donde quedó el cursor (para detectar
+        # movimiento horizontal del usuario entre saltos verticales).
+        self._edit_goal_col = None
+        self._edit_last_placed = None
 
         # ====================================================================
         # Configuración de ScrollView (ANTES de super().__init__)
@@ -235,6 +241,7 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
 
         for line_state in self.state_manager.get_line_states():
             line_widget = MDDocumentLine(line_state, placement=self.editor_placement)
+            line_widget.on_edit_nav = self._on_line_edit_nav
             self.doc_lines_layout.add_widget(line_widget)
             self._line_widgets[line_state.index] = line_widget
 
@@ -471,7 +478,8 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
 
         Logger.debug(f"MDDocumentEditor: Activated line {index}")
 
-    def edit_line(self, index: int, click_pos=None):
+    def edit_line(self, index: int, click_pos=None, cursor_col=None,
+                  reset_goal=True):
         """
         Entrar en modo edición de una línea (Inc 2).
 
@@ -482,14 +490,62 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         Args:
             index: Índice de la línea a editar.
             click_pos: posición (coords de ventana) del click que originó la
-                edición; el cursor se ubica ahí. None → cursor al final.
+                edición; el cursor se ubica ahí (prioridad).
+            cursor_col: columna destino del cursor (saltos de línea en edición).
+            reset_goal: si True (edición nueva por click/F2/Enter), olvida la
+                columna objetivo; los saltos ↑/↓ la manejan con reset_goal=False.
+            Ambos hints None → cursor al final.
         """
+        if reset_goal:
+            self._edit_goal_col = None
+            self._edit_last_placed = None
         line_widget = self.get_line_widget(index)
         if line_widget is not None:
-            line_widget.set_edit_cursor_hint(click_pos)
+            line_widget.set_edit_cursor_hint(click_pos, cursor_col)
         self.activate_line(index)  # selecciona si no lo estaba (fade)
         self.state_manager.update_state(index, editing=True)
         Logger.debug(f"MDDocumentEditor: Editing line {index}")
+
+    def _on_line_edit_nav(self, from_index: int, delta: int, cursor_col) -> bool:
+        """
+        Mueve la edición `delta` líneas desde `from_index` (callback de
+        MDDocumentLine en edición). La línea que se deja confirma sus cambios
+        (al desactivarse, editing=False → commit). Devuelve True si se movió.
+
+        Args:
+            cursor_col: columna destino — int (columna actual del cursor, para
+                ↑/↓ con columna objetivo), 'end' (final de la línea destino,
+                para ← en el borde) o 'start' (inicio, para → en el borde).
+        """
+        target = from_index + delta
+        total = self.state_manager.get_total_lines()
+        if not (0 <= target < total):
+            return False  # borde del documento: no hace nada
+
+        md_line = self.state_manager.get_md_line(target)
+        tlen = len(md_line.md_text) if md_line is not None else 0
+
+        if cursor_col == 'end':
+            # ← en el borde: movimiento horizontal → reubica la columna objetivo
+            col = tlen
+            self._edit_goal_col = col
+        elif cursor_col == 'start':
+            # → en el borde: ídem
+            col = 0
+            self._edit_goal_col = col
+        else:
+            # ↑/↓: columna objetivo. Si el cursor actual difiere de donde lo
+            # dejamos, el usuario se movió horizontal → reubica el objetivo;
+            # si coincide, se mantiene (las líneas cortas no lo pisan).
+            current = int(cursor_col)
+            if self._edit_goal_col is None or current != self._edit_last_placed:
+                self._edit_goal_col = current
+            col = min(self._edit_goal_col, tlen)
+
+        self._edit_last_placed = col
+        self.edit_line(target, cursor_col=col, reset_goal=False)
+        self._scroll_to_line(target)
+        return True
 
     def deactivate_current_line(self):
         """Desactivar la línea activa actual (delegado al StateManager)."""
