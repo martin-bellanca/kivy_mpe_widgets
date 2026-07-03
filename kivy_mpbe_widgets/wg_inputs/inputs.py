@@ -75,7 +75,6 @@ class EditableTextLabel(FocusBehavior, BoxLayout, StartEditingEventDispatcher, F
         BoxLayout.__init__(self)
         StartEditingEventDispatcher.__init__(self)
         FinishEditingEventDispatcher.__init__(self)
-        self.focus = True
         self._padding_x = padding_x
         self._label = TextLabel(text=text, valign='center', style=style, padding_x=padding_x)
         self._text_input = None
@@ -85,7 +84,6 @@ class EditableTextLabel(FocusBehavior, BoxLayout, StartEditingEventDispatcher, F
         self.in_edition = False
         self.back_text = None
         self.bind(on_touch_up=self._on_label_touch_up)
-        Window.bind(on_key_down=self._on_keyboard_down)
 
     '''Funciones de Edición -----------------------------------------------------------'''
     def _init_edition(self, dt):
@@ -103,6 +101,8 @@ class EditableTextLabel(FocusBehavior, BoxLayout, StartEditingEventDispatcher, F
             self._text_input.focus = True
             self.remove_widget(self._label)
             self.add_widget(self._text_input)
+            # Escuchar teclado (Escape/Enter) solo mientras dura la edición
+            Window.bind(on_key_down=self._on_keyboard_down)
             Clock.schedule_once(self._init_edition, 0.4)
             return True
         return False
@@ -110,6 +110,8 @@ class EditableTextLabel(FocusBehavior, BoxLayout, StartEditingEventDispatcher, F
     def finish_editing(self, instance):
         '''Guarda el texto editado y desactivar edición'''
         if self.in_edition:
+            # Dejar de escuchar el teclado global al salir de edición
+            Window.unbind(on_key_down=self._on_keyboard_down)
             self._label.text = self._text_input.text
             self.text = self._text_input.text
             # self.editable = False
@@ -120,7 +122,15 @@ class EditableTextLabel(FocusBehavior, BoxLayout, StartEditingEventDispatcher, F
             FinishEditingEventDispatcher.do_something(self, new_text=instance.text)
 
     '''Eventos -----------------------------------------------------------------------'''
+    def keyboard_on_key_down(self, window, keycode, text, modifiers):
+        # Solo dispara en el label que tiene el foco (FocusBehavior)
+        if not self.in_edition and self.editable and keycode[0] == 283:  # Tecla F2
+            self.start_editing()
+            return True
+        return super().keyboard_on_key_down(window, keycode, text, modifiers)
+
     def _on_keyboard_down(self, window, keycode, modifier, char, special_keys):
+        # Enganchado a Window solo durante la edición (Escape / Enter)
         if self.in_edition:
             if keycode == 27:  # Tecla Escape
                 self.text = self.back_text
@@ -131,8 +141,6 @@ class EditableTextLabel(FocusBehavior, BoxLayout, StartEditingEventDispatcher, F
                 self.finish_editing(self._text_input)
                 return True
             return False
-        elif not self.in_edition and self.editable and keycode == 283:  # Tecla F2
-            self.start_editing()
 
     def _on_label_touch_up(self, instance, mouse):
         if self.editable and mouse.button=='right' and self.collide_point(mouse.x, mouse.y):

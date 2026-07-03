@@ -277,7 +277,7 @@ class FileTreeView(TreeView, ThemableBehavior, NewFileEventDispatcher, NewFolder
         self.root_node = None
         self.root_path = root_path
         self._node_hotlight = None
-        self._Rename_old_name = None
+        self._rename_old_name = None
         self._rename_path = None
 
         # Botones IconClick
