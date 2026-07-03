@@ -21,10 +21,12 @@ combinaciones de teclado/mouse** del editor V2, con columnas de **sub-tarea** y
 
 | Acción | Modo | Descripción | Inc | Estado |
 |---|---|---|---|---|
-| Click | False | Selecciona la línea (anima selección verde desde el click) | 1 | ✅ |
+| Click en línea no seleccionada | False | La selecciona (anima selección verde desde el click) | 1 | ✅ |
 | Click otra | False | Desactiva la anterior, activa la nueva | 1 | ✅ |
 | Mouse enter/leave | T/F | Hotlight on/off (2 líneas verticales azules) | 1 | ✅ |
-| Doble-click | False | Activa edición de la línea | 2 | ✅ |
+| Click en línea seleccionada | False | Activa edición de la línea con el **cursor en el punto del click** (reemplazó al doble-click, 2026-07-03) | 2 | ✅ |
+| Click en el texto en edición | True | Mueve el cursor al punto del click (nativo del TextInput; el editor no roba el foco) | 2 | ✅ |
+| Click en otra línea | True | **Mantiene el modo edición**: la actual confirma y la nueva entra a editar con el cursor en el click | 2 | ✅ |
 | Edición (tipear) | True | Cambia texto → persiste en MDLine + render en vivo | 2 | ✅ |
 | Escape | True | Sale de edición y **anula** los cambios (restaura) | 2 | ✅ |
 

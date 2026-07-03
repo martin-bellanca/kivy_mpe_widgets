@@ -38,7 +38,9 @@ WIDGETS_LABELS = {
     MLT.ORDER_LIST: MDTextLabel,
     MLT.TASK: MDTaskLabel,
     MLT.TODO: MDToDoLabel,
-    MLT.TABLE: MDTableLabel,
+    # TODO: MDTableLabel no acepta md_text (su __init__ recibe html_table) y no
+    # es instanciable desde MDDocumentLine. Mapeado a MDTextLabel hasta portarlo.
+    MLT.TABLE: MDTextLabel,
     MLT.BLOCKQUOTE: MDBlockQuoteLabel,
     MLT.IMAGEN: MDImageLabel,
     MLT.CODE: MDCodeLabel,

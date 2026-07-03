@@ -61,6 +61,16 @@ class GHotlightItem(InstructionGroup):
         if kivy_mpbe_widgets.DEVICE_TYPE == 'desktop':
             Window.bind(mouse_pos=self.on_mouse_move)
 
+    def release(self):
+        """
+        Desbindea los eventos (Window.mouse_pos y pos/size del widget).
+        Llamar al descartar el widget dueño; si no, el bind global a Window
+        queda vivo para siempre (fuga + callbacks sobre widgets muertos).
+        """
+        if kivy_mpbe_widgets.DEVICE_TYPE == 'desktop':
+            Window.unbind(mouse_pos=self.on_mouse_move)
+        self._widget.unbind(pos=self._update_graphics, size=self._update_graphics)
+
     # Funciones de Dibujo y Actualización -----------------------------------------------
     def _draw(self):
         cc = self._widget.theme.colors['hotlight_border']

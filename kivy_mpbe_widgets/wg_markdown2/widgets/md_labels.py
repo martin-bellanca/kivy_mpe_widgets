@@ -211,7 +211,7 @@ class MDSeparatorLabel(Widget, BaseMDLabel):
         pass
 
 
-class MDHeadLabel(Label, BaseMDLabel):  # Resaltar fondo.
+class MDHeadLabel(MDTextLabel):  # TODO: Resaltar fondo.
     """Etiqueta para mostrar el encabezado del formato markdown
     **Attributes:**
         -

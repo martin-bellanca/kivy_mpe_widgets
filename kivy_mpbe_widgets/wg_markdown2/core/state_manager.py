@@ -264,18 +264,21 @@ class DocumentStateManager(EventDispatcher):
                 y_position=0.0
             )
 
+            # NOTA: para propiedades de Kivy se bindea por nombre (active=...);
+            # bind(on_active=...) sólo aplica a eventos registrados y Kivy lo
+            # ignora en silencio si no existen.
             state.bind(
                 # UI State Changes
-                on_active=self._on_line_state_active,
-                on_selected=self._on_line_state_selected,
-                on_hotlight=self._on_line_state_hotlight,
-                on_editing=self._on_line_state_editing,
+                active=self._on_line_state_active,
+                selected=self._on_line_state_selected,
+                hotlight=self._on_line_state_hotlight,
+                editing=self._on_line_state_editing,
                 # Visibility & Group Changes
-                on_visible=self._on_line_state_visible,
-                on_matched_search=self._on_line_state_matched_search,
-                on_group=self._on_line_group_changed,
+                visible=self._on_line_state_visible,
+                matched_search=self._on_line_state_matched_search,
+                group=self._on_line_group_changed,
                 # Geometry Changes
-                on_height=self._on_line_height_changed,
+                height=self._on_line_height_changed,
                 # Type Changes (custom event)
                 on_type_changed=self._on_line_type_changed
             )
@@ -705,16 +708,16 @@ class DocumentStateManager(EventDispatcher):
             height=estimated_height
         )
 
-        # Bindear eventos del LineState
+        # Bindear eventos del LineState (propiedades por nombre; ver _load_document)
         new_state.bind(
-            on_active=self._on_line_state_active,
-            on_selected=self._on_line_state_selected,
-            on_hotlight=self._on_line_state_hotlight,
-            on_editing=self._on_line_state_editing,
-            on_visible=self._on_line_state_visible,
-            on_matched_search=self._on_line_state_matched_search,
-            on_group=self._on_line_group_changed,
-            on_height=self._on_line_height_changed,
+            active=self._on_line_state_active,
+            selected=self._on_line_state_selected,
+            hotlight=self._on_line_state_hotlight,
+            editing=self._on_line_state_editing,
+            visible=self._on_line_state_visible,
+            matched_search=self._on_line_state_matched_search,
+            group=self._on_line_group_changed,
+            height=self._on_line_height_changed,
             on_type_changed=self._on_line_type_changed
         )
 

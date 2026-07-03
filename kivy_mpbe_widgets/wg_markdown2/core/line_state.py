@@ -152,7 +152,12 @@ class LineState(EventDispatcher):
         self.index = index
         self.widget_index = index  # Índice del widget asociado (puede ser diferente si hay líneas ocultas)
         self.md_line = md_line
-        self._widget_type = MDTextLabel  # Tipo de widget asociado a la línea (MDTextLabel, MDHeadLabel, etc)
+        # Tipo de widget asociado a la línea según su tipo markdown
+        # (MDTextLabel, MDSeparatorLabel, etc). Sin md_line, default a texto.
+        if md_line is not None:
+            self._widget_type = WIDGETS_LABELS.get(md_line.type, MDTextLabel)
+        else:
+            self._widget_type = MDTextLabel
 
 
     # ========================================================================
@@ -213,10 +218,10 @@ class LineState(EventDispatcher):
             return ''
         return self.md_line.md_text
 
-    def update_type(self) -> MD_LINE_TYPE:
+    def update_type(self) -> Optional[MD_LINE_TYPE]:
         """Actualiza el tipo de línea basado en el contenido actual."""
         if self.md_line is None:
-            old_type = None
+            return None
         old_type = self.md_line.update_type()
 
         if old_type != self.md_line.type:

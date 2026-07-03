@@ -20,7 +20,6 @@ Fecha: 2026-01-12
 Autor: Martin Pablo Bellanca
 """
 
-from logging import ERROR
 from typing import Optional
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.behaviors import FocusBehavior
@@ -30,7 +29,6 @@ from kivy.logger import Logger
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
-from pygments.unistring import No
 
 # Importar ThemableBehavior
 from kivy_mpbe_widgets.theming import ThemableBehavior
@@ -172,26 +170,35 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
     # CORE: Gestión de Documento
     # ==========================================================================
 
+    def _release_line_widgets(self):
+        """
+        Descarta todas las filas de línea: desbindea sus eventos globales
+        (Window.mouse_pos del hover, Window.on_key_down de la edición) y
+        limpia el layout, el mapa y la referencia a la fila activa.
+        Evita fugas de binds al repoblar el documento.
+        """
+        for line_widget in self._line_widgets.values():
+            line_widget.release()
+        if self.doc_lines_layout:
+            self.doc_lines_layout.clear_widgets()
+        self._line_widgets = {}
+        self.active_line_widget = None
+
     def initialize_document(self):
         """
         Inicializa/resetea el documento a estado vacío.
 
         Limpia:
-        - Filas de líneas (widgets) y su mapa
+        - Filas de líneas (widgets) y su mapa (desbindeando eventos globales)
         - StateManager
         - Referencia a la línea activa
         """
-        # Limpiar widgets de línea
-        if self.doc_lines_layout:
-            self.doc_lines_layout.clear_widgets()
-        self._line_widgets = {}
+        # Limpiar widgets de línea (desbindea eventos globales)
+        self._release_line_widgets()
 
         # Limpiar estado
         if self.state_manager:
             self.state_manager._clear_all()
-
-        # Resetear referencia a línea activa
-        self.active_line_widget = None
 
         Logger.info("MDDocumentEditorV2: Document initialized")
 
@@ -221,9 +228,10 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         Logger.info(f"MDDocumentEditorV2: Initialized {len(md_lines)} line states")
 
         # FASE 2: Construir las filas UNA sola vez, atadas a su LineState.
-        # Limpiar lo anterior para no duplicar (Inc 0).
-        self.doc_lines_layout.clear_widgets()
-        self._line_widgets = {}
+        # Descartar lo anterior (desbindea eventos globales; no duplicar, Inc 0).
+        self._release_line_widgets()
+        # El teclado del documento se re-activa al activar una línea del nuevo doc
+        self._kbd_active = False
 
         for line_state in self.state_manager.get_line_states():
             line_widget = MDDocumentLine(line_state, placement=self.editor_placement)
@@ -347,14 +355,27 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
     _TAP_THRESHOLD = dp(8)
 
     def on_touch_down(self, touch):
-        """Registra el inicio del touch para distinguir tap de scroll."""
+        """
+        Registra el inicio del touch para distinguir tap de scroll.
+
+        En edición NO deja que el FocusBehavior del ScrollView robe el foco
+        del input (cerraba la edición al clickear dentro del texto): saltea
+        FocusBehavior en la cadena y marca el touch como 'ignorado' para que
+        el desfoque global de Kivy tampoco actúe. El destino real del click
+        lo decide on_touch_up (mover cursor / cambiar de línea en edición).
+        """
         if self.collide_point(*touch.pos):
             touch.ud['md_down_pos'] = touch.pos
+            if self._is_editing():
+                FocusBehavior.ignored_touch.append(touch)
+                return ScrollView.on_touch_down(self, touch)
         return super().on_touch_down(touch)
 
     def on_touch_up(self, touch):
         """
-        Si el touch fue un tap (se movió poco) sobre una línea, la activa.
+        Si el touch fue un tap (se movió poco) sobre una línea:
+        - línea NO seleccionada → la selecciona (activa);
+        - línea YA seleccionada → entra en modo edición.
         Si hubo arrastre, se trata como scroll y no activa nada.
         La rueda del mouse (que Kivy emite como touch) se ignora para no
         seleccionar la línea al scrollear.
@@ -372,10 +393,21 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
             if moved <= self._TAP_THRESHOLD:
                 line = self._line_at(touch.pos)
                 if line is not None:
-                    if getattr(touch, 'is_double_tap', False):
-                        self.edit_line(line.index)
+                    editing = self._is_editing()
+                    if line.index == self.state_manager.get_active_index():
+                        if not editing:
+                            # click en la línea ya seleccionada → editar
+                            # (cursor en el punto del click)
+                            self.edit_line(line.index, click_pos=touch.pos)
+                        # ya en edición: el TextInput recibe el touch y
+                        # mueve el cursor solo
+                    elif editing:
+                        # click en otra línea estando en edición → mantener
+                        # el modo: la actual confirma, la nueva entra a editar
+                        self.edit_line(line.index, click_pos=touch.pos)
                     else:
-                        self.activate_line(line.index)  # click -> fade
+                        # click en otra línea → seleccionar (fade)
+                        self.activate_line(line.index)
         return handled
 
     def _line_at(self, window_pos):
@@ -439,14 +471,22 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
 
         Logger.debug(f"MDDocumentEditor: Activated line {index}")
 
-    def edit_line(self, index: int):
+    def edit_line(self, index: int, click_pos=None):
         """
         Entrar en modo edición de una línea (Inc 2).
 
         Se asegura de que la línea esté activa (seleccionada) y luego pone
         editing=True en el LineState; el MDDocumentLine reacciona mostrando
         el editor en overlay.
+
+        Args:
+            index: Índice de la línea a editar.
+            click_pos: posición (coords de ventana) del click que originó la
+                edición; el cursor se ubica ahí. None → cursor al final.
         """
+        line_widget = self.get_line_widget(index)
+        if line_widget is not None:
+            line_widget.set_edit_cursor_hint(click_pos)
         self.activate_line(index)  # selecciona si no lo estaba (fade)
         self.state_manager.update_state(index, editing=True)
         Logger.debug(f"MDDocumentEditor: Editing line {index}")

@@ -168,7 +168,7 @@ stateDiagram-v2
     Hotlight --> Active : click
     Active --> Idle : click en otra línea / Esc
 
-    Active --> Editing : Enter o doble click (editing=True, show_editor)
+    Active --> Editing : click en línea activa (editing=True) · Enter/F2 en 3b
     Editing --> Active : Esc cancela / Enter o foco fuera confirma
 
     note right of Active
@@ -199,7 +199,7 @@ sequenceDiagram
     SM->>LS: active=True (línea i)
     SM-->>LS: active=False (línea previa)
     LS-->>LW: evento on_active → highlight
-    U->>LW: Enter / doble click
+    U->>LW: click en línea activa (o Enter/F2, 3b)
     LW->>SM: update_state(i, editing=True)
     SM->>LS: editing=True
     LS-->>ED: evento on_editing → show_editor(True)
@@ -236,7 +236,7 @@ flowchart TD
 | I | Render + scroll (labels) | ✅ Hecho | El documento se ve renderizado |
 | 0 | Render bound a `LineState` + fix duplicación | ✅ Hecho | Cada línea es un `MDDocumentLine` atado a su `LineState`; el scroll ya no duplica |
 | 1 | Hover + selección por click | ✅ Hecho | Hover = 2 líneas verticales azules (GHotlightItem); click = selección verde animada desde el click (GSelectItem); la rueda del mouse no selecciona |
-| 2 | Modo edición (doble-click) | ✅ Hecho | Doble-click edita; `MDLineTextInput` en overlay translúcido o debajo del label (config `editor_placement`); render en vivo; Enter/foco confirma, Esc cancela |
+| 2 | Modo edición (click en línea activa) | ✅ Hecho | Click sobre la línea ya seleccionada edita (reemplazó al doble-click, 2026-07-03); `MDLineTextInput` en overlay translúcido o debajo del label (config `editor_placement`); render en vivo; Enter/foco confirma, Esc cancela |
 | 3 | Teclado + navegación | 🟡 En curso | **3a ✅** (↑↓, PageUp/Down, Ctrl+Home/End — a nivel Window). Faltan **3b-3e** (edición por teclado, estructural, títulos, selección múltiple). Detalle y seguimiento en [tabla_eventos.md](tabla_eventos.md) |
 | 4 | Control del foco de la App | ⬜ Pendiente | El foco se coordina entre paneles (árbol, archivos, editor) y la línea/editor activos |
 | 5 | Sistema de reciclado propio | ⬜ Pendiente | Sólo se realizan las líneas visibles en el viewport (adaptado al proyecto); scroll fluido en documentos grandes |

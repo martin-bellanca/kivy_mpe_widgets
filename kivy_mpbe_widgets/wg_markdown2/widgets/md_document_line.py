@@ -20,11 +20,16 @@ Etapa II · Incremento 2 (edición en overlay translúcido):
 Autor: Martin Pablo Bellanca
 """
 
+import re
+
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
 from kivy.core.window import Window
+from kivy.core.text import Label as CoreLabel
 from kivy.clock import Clock
 from kivy.properties import NumericProperty, ObjectProperty
+
+from helpers_mpbe.markdown_document.md_translate import title_font_size
 
 from kivy_mpbe_widgets.theming import ThemableBehavior
 from kivy_mpbe_widgets.graphics.items_graphics import GHotlightItem
@@ -88,9 +93,46 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         # Editor (se crea perezosamente al entrar en edición)
         self.editor = None
         self._edit_original = None
+        # Hint de posición del cursor al entrar en edición (coords de ventana
+        # del click). None → cursor al final. Se consume al posicionarse.
+        self._edit_click_pos = None
 
-        # Observa el modo edición del LineState
-        self.line_state.bind(editing=self._on_editing)
+        # Observa el modo edición y los cambios de tipo del LineState
+        self.line_state.bind(editing=self._on_editing,
+                             on_type_changed=self._on_type_changed)
+
+    def release(self):
+        """
+        Desbindea los eventos globales de la fila (Window y LineState).
+        Llamar antes de descartar el widget (repoblado/limpieza) para evitar
+        fugas: el hover bindea Window.mouse_pos y la edición Window.on_key_down.
+        """
+        self.graphic_hotlight.release()
+        Window.unbind(on_key_down=self._on_key_down)
+        self.line_state.unbind(editing=self._on_editing,
+                               on_type_changed=self._on_type_changed)
+
+    # ------------------------------------------------------- tipo de línea
+    def _on_type_changed(self, line_state, index, old_type, new_type):
+        """
+        Reemplaza el label por el del nuevo tipo de línea (p. ej. al tipear
+        '# ' en edición la línea pasa a título). Mantiene posición y z-order
+        (si el editor está montado, el label queda debajo de él).
+        """
+        old_label = self.label
+        old_label.unbind(height=self._on_label_height)
+        self._cell.remove_widget(old_label)
+
+        self.label = new_type(md_text=self.line_state.get_md_text())
+        self.label.size_hint = (1, None)
+        self.label.pos_hint = dict(old_label.pos_hint)
+        if self.editor is not None and self.editor.parent is self._cell:
+            # Insertar al fondo del orden de dibujo (el editor sigue arriba)
+            self._cell.add_widget(self.label, index=len(self._cell.children))
+        else:
+            self._cell.add_widget(self.label)
+        self.label.bind(height=self._on_label_height)
+        self._apply_row_height()
 
     # ------------------------------------------------------------------ altura
     def _on_label_height(self, instance, value):
@@ -183,20 +225,78 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         # Ajusta la altura de la fila según el modo
         self._apply_row_height()
 
-        # Foco + cursor al final (diferido para que el editor esté montado)
+        # Foco + cursor (diferido para que el editor esté montado y posicionado)
         self.editor.focus = True
-        Clock.schedule_once(self._place_cursor_end, 0)
+        Clock.schedule_once(self._place_cursor, 0)
 
         # Escape para cancelar
         Window.bind(on_key_down=self._on_key_down)
 
-    def _place_cursor_end(self, dt):
-        if self.editor is not None:
+    def set_edit_cursor_hint(self, window_pos):
+        """
+        Fija dónde ubicar el cursor al entrar en edición.
+
+        Args:
+            window_pos: posición (x, y) en coords de ventana del click que
+                origina la edición, o None para cursor al final del texto.
+        """
+        self._edit_click_pos = window_pos
+
+    def _place_cursor(self, dt):
+        """
+        Posiciona el cursor al entrar en edición: en el punto del click si
+        hay hint (como la V1 con get_cursor_from_xy), o al final del texto.
+        El hint se consume (una edición posterior no hereda un click viejo).
+
+        El input conserva su fuente chica; el mapeo compensa las diferencias
+        con el render: la distancia del click al inicio del texto se escala
+        por (fuente input / fuente render) y se le suma el padding izquierdo
+        del input (el label no tiene) y el ancho del prefijo markdown oculto
+        (p. ej. '## ' en títulos). Queda una deriva chica en títulos (el
+        render es negrita, el input no).
+        """
+        if self.editor is None:
+            return
+        click_pos, self._edit_click_pos = self._edit_click_pos, None
+        if click_pos is not None:
+            x, y = self.editor.to_widget(*click_pos)
+            # Distancia al inicio del texto renderizado (label e input
+            # comparten x), llevada a la escala de la fuente del input
+            scale = self.editor.font_size / float(self._render_font_size())
+            cx = (x - self.editor.x) * scale
+            x = (self.editor.x + cx + self.editor.padding[0]
+                 + self._hidden_prefix_width())
+            self.editor.cursor = self.editor.get_cursor_from_xy(x, y)
+        else:
             self.editor.cursor = (len(self.editor.text), 0)
+
+    def _render_font_size(self):
+        """
+        Tamaño de fuente con que se ve el render de la línea (para escalar el
+        X del click a la fuente del input): títulos según su nivel
+        (title_font_size, la misma fórmula del traductor); el resto, la del label.
+        """
+        level = self.line_state.get_title_level()
+        if level:
+            return title_font_size(level)
+        return getattr(self.label, 'font_size', self.editor.font_size)
+
+    def _hidden_prefix_width(self):
+        """
+        Ancho (px) del prefijo markdown que el render oculta (p. ej. '## '),
+        medido con la fuente del input. 0 si la línea no tiene prefijo oculto.
+        """
+        match = re.match(r'^#{1,6}\s', self.editor.text)
+        if not match:
+            return 0.0
+        core = CoreLabel(font_size=self.editor.font_size,
+                         font_name=self.editor.font_name)
+        return core.get_extents(match.group(0))[0]
 
     def _exit_edit(self):
         """Quita el editor y deja el label con el texto actual re-renderizado."""
         Window.unbind(on_key_down=self._on_key_down)
+        self._edit_click_pos = None
         if self.editor is not None and self.editor.parent is not None:
             self.editor.focus = False
             self._cell.remove_widget(self.editor)
@@ -209,7 +309,8 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
     def _on_editor_text(self, instance, value):
         """Cada cambio de texto persiste en el MDLine y re-renderiza el label en vivo."""
         self.line_state.md_line.md_text = value
-        self.line_state.md_line.update_type()
+        # Vía LineState: si cambia el tipo, dispara on_type_changed → swap del label
+        self.line_state.update_type()
         self.label.md_text = value  # render en tiempo real
 
     def _on_editor_focus(self, instance, value):
@@ -225,6 +326,10 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
             Clock.schedule_once(self._commit_on_focus_loss, 0)
 
     def _commit_on_focus_loss(self, dt):
+        # Si el input recuperó el foco en el interín (p. ej. el click cayó
+        # dentro del texto en edición), no hay nada que commitear.
+        if self.editor is not None and self.editor.focus:
+            return
         if self.line_state.editing:
             self._commit()
 
@@ -240,7 +345,8 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         """Escape cancela y restaura el texto original."""
         if key == 27 and self.line_state.editing:  # Escape
             self.line_state.md_line.md_text = self._edit_original
-            self.line_state.md_line.update_type()
+            # Vía LineState: restaura también el tipo/label si cambió al editar
+            self.line_state.update_type()
             self.label.md_text = self._edit_original
             if self.editor is not None:
                 self.editor.text = self._edit_original
