@@ -226,8 +226,7 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         self._line_widgets = {}
 
         for line_state in self.state_manager.get_line_states():
-            line_widget = MDDocumentLine(line_state, placement=self.editor_placement,
-                                         doc_editor=self)
+            line_widget = MDDocumentLine(line_state, placement=self.editor_placement)
             self.doc_lines_layout.add_widget(line_widget)
             self._line_widgets[line_state.index] = line_widget
 
