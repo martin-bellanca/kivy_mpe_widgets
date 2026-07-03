@@ -206,6 +206,8 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
                              focus=self._on_editor_focus,
                              on_text_validate=self._on_editor_validate,
                              height=self._apply_row_height)
+            # Intercepta teclas de edición (F2; flechas entre líneas en 3b.3)
+            self.editor.nav_handler = self._on_editor_nav
 
         if self.placement == EDITOR_PLACEMENT_BELOW:
             # Input opaco, DEBAJO del label (label arriba, input abajo)
@@ -292,6 +294,24 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         core = CoreLabel(font_size=self.editor.font_size,
                          font_name=self.editor.font_name)
         return core.get_extents(match.group(0))[0]
+
+    # Key codes de las teclas de edición interceptadas en el input
+    _K_F2 = 283
+
+    def _on_editor_nav(self, keycode, modifiers):
+        """
+        Intercepta teclas de edición mientras el input tiene el foco
+        (callback de MDLineTextInput.nav_handler). Devuelve True si consume
+        la tecla (no la procesa el TextInput).
+
+        Inc 3b.2: F2 sale de edición (confirma, como Enter/foco-fuera).
+        Inc 3b.3: ↑↓←→ para saltar de línea (delegará en el coordinador).
+        """
+        key = keycode[0]
+        if key == self._K_F2:
+            self._commit()
+            return True
+        return False
 
     def _exit_edit(self):
         """Quita el editor y deja el label con el texto actual re-renderizado."""

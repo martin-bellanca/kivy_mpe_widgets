@@ -507,6 +507,8 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
     _K_UP, _K_DOWN = 273, 274
     _K_PAGEUP, _K_PAGEDOWN = 280, 281
     _K_HOME, _K_END = 278, 279
+    _K_ENTER, _K_NUMPAD_ENTER = 13, 271
+    _K_F2 = 283
 
     def _is_editing(self) -> bool:
         """True si la línea activa está en modo edición."""
@@ -550,7 +552,22 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         elif key == self._K_END and 'ctrl' in mods:
             self._go_to_line(self.state_manager.get_total_lines() - 1, 'down')
             return True
+        elif key in (self._K_ENTER, self._K_NUMPAD_ENTER, self._K_F2):
+            # Enter o F2 sobre la línea activa → entrar en edición (Inc 3b).
+            # F2 para salir de edición (toggle) y las flechas en edición son 3b.2.
+            return self._edit_active_line()
         return False
+
+    def _edit_active_line(self) -> bool:
+        """
+        Entra en edición de la línea activa (cursor al final). Devuelve True si
+        había línea activa (evento consumido), False si no.
+        """
+        index = self.state_manager.get_active_index()
+        if index is None:
+            return False
+        self.edit_line(index)
+        return True
 
     def _navigate(self, delta: int) -> bool:
         """

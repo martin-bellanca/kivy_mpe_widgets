@@ -61,8 +61,9 @@ combinaciones de teclado/mouse** del editor V2, con columnas de **sub-tarea** y
 
 | Acción | Modo | Descripción | Método Origen | Estado |
 |---|---|---|---|---|
-| Enter | False | Entra en modo edición de la línea activa (como F2) | `_handle_enter()` | ⬜ |
-| F2 | T/F | Activa/Desactiva edición de la línea activa | `_handle_f2()` | ⬜ |
+| Enter | False | Entra en modo edición de la línea activa (como F2) | `_edit_active_line()` (Window) | ✅ |
+| F2 | False | Entra en modo edición de la línea activa | `_edit_active_line()` (Window) | ✅ |
+| F2 | True | Sale de edición (toggle, confirma) | `_on_editor_nav()` (input) | ✅ |
 | ↑ | True | Línea superior manteniendo la columna del cursor | `_handle_arrow_up()` | ⬜ |
 | ↓ | True | Línea inferior manteniendo la columna del cursor | `_handle_arrow_down()` | ⬜ |
 | ← | True | Si está al inicio, pasa la edición a la línea anterior (cursor al final) | `_handle_arrow_left()` | ⬜ |

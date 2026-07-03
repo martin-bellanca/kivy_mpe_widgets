@@ -78,6 +78,11 @@ class MDLineTextInput(TextInput):
     def __init__(self, **kwargs):
         super(MDLineTextInput, self).__init__(**kwargs)
         self.multiline = False
+        # Callback opcional de intercepción de teclado (keycode, modifiers) ->
+        # bool. Si devuelve True, la tecla se consume antes de que el TextInput
+        # la procese (lo usa MDDocumentLine para las teclas de edición: F2,
+        # flechas entre líneas). None = comportamiento normal del TextInput.
+        self.nav_handler = None
         self._pairs = {
             '*': '**',
             '"': '""',
@@ -99,6 +104,18 @@ class MDLineTextInput(TextInput):
             '[x': '[x] ',
             '[-': '[-] '
         }
+
+    def keyboard_on_key_down(self, window, keycode, text, modifiers):
+        """
+        Intercepta teclas antes de que el TextInput las procese.
+
+        Si hay `nav_handler` seteado y consume la tecla (devuelve True), no se
+        propaga al TextInput. Así el dueño (MDDocumentLine) maneja las teclas de
+        edición (F2, flechas entre líneas) sin que el input haga lo suyo.
+        """
+        if self.nav_handler is not None and self.nav_handler(keycode, modifiers):
+            return True
+        return super().keyboard_on_key_down(window, keycode, text, modifiers)
 
     def insert_text(self, substring, from_undo=False):
         # Reemplaza el tab por 4 espacios
