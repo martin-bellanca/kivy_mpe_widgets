@@ -43,7 +43,10 @@ EDITOR_PLACEMENT_OVERLAY = 'overlay'  # input translúcido SOBRE el label
 EDITOR_PLACEMENT_BELOW = 'below'      # input opaco DEBAJO del label
 # Alpha del fondo del input en modo overlay (sólo el fondo es translúcido;
 # el texto va negro y opaco para que se lea bien).
-OVERLAY_BG_ALPHA = 0.35
+OVERLAY_BG_ALPHA = 0.5
+# Opacidad del label mientras se edita en overlay: tenue (fantasma del render
+# detrás del texto de edición), pero sin ocultarlo del todo.
+OVERLAY_LABEL_ALPHA = 0.35
 
 
 class MDDocumentLine(ThemableBehavior, BoxLayout):
@@ -132,6 +135,7 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         self.label = new_type(md_text=self.line_state.get_md_text())
         self.label.size_hint = (1, None)
         self.label.pos_hint = dict(old_label.pos_hint)
+        self.label.opacity = old_label.opacity  # conserva el tenue de edición
         if self.editor is not None and self.editor.parent is self._cell:
             # Insertar al fondo del orden de dibujo (el editor sigue arriba)
             self._cell.add_widget(self.label, index=len(self._cell.children))
@@ -221,9 +225,19 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
             self.editor.pos_hint = {'x': 0, 'y': 0}
             self.label.pos_hint = {'x': 0, 'top': 1}
         else:  # overlay
-            # Input SOBRE el label; sólo el fondo translúcido, texto negro
+            # Input SOBRE el label; fondo translúcido, texto negro. El label
+            # queda tenue detrás (fantasma del render) para que el texto de
+            # edición no se confunda con el renderizado.
             self.editor.background_color = (1, 1, 1, OVERLAY_BG_ALPHA)
             self.editor.pos_hint = {'x': 0, 'y': 0}
+            self.label.opacity = OVERLAY_LABEL_ALPHA
+            # Fuente y altura del input = las del label: el texto de edición no
+            # se ve chico y la fila no crece al editar (reflow ~cero). Padding
+            # vertical 0 para que la fuente entre en el alto del label.
+            self.editor.font_size = self.label.font_size
+            self.editor.padding = [self.editor.padding[0], 0,
+                                   self.editor.padding[2], 0]
+            self.editor.height = self.label.height
 
         self.editor.text = self.line_state.md_line.md_text
 
@@ -363,8 +377,9 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         if self.editor is not None and self.editor.parent is not None:
             self.editor.focus = False
             self._cell.remove_widget(self.editor)
-        # Restaurar posición del label (por si estaba en modo 'below')
+        # Restaurar posición y opacidad del label (overlay lo dejó tenue)
         self.label.pos_hint = {'x': 0, 'y': 0}
+        self.label.opacity = 1
         self.label.md_text = self.line_state.md_line.md_text
         # La fila vuelve a la altura del label
         self._apply_row_height()

@@ -91,7 +91,9 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         self.doc_lines_layout = None
         self.active_line_widget = None
         # Config: ubicación del editor en modo edición ('overlay' | 'below')
-        self.editor_placement = EDITOR_PLACEMENT_BELOW
+        # Rama mejora_animacion_edicion (B): overlay para que la fila no crezca
+        # con el input → sin reflow del BoxLayout al saltar de línea editando.
+        self.editor_placement = EDITOR_PLACEMENT_OVERLAY
         # self.md_document: Optional[MDDocument] = None  md_document esta en state_manager?
         self.last_scroll_y = 1.0
         # Columna objetivo del cursor en edición (goal column): se mantiene al
@@ -479,7 +481,7 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         Logger.debug(f"MDDocumentEditor: Activated line {index}")
 
     def edit_line(self, index: int, click_pos=None, cursor_col=None,
-                  reset_goal=True):
+                  reset_goal=True, direction='fade'):
         """
         Entrar en modo edición de una línea (Inc 2).
 
@@ -502,7 +504,7 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         line_widget = self.get_line_widget(index)
         if line_widget is not None:
             line_widget.set_edit_cursor_hint(click_pos, cursor_col)
-        self.activate_line(index)  # selecciona si no lo estaba (fade)
+        self.activate_line(index, direction=direction)  # fade (click) o slide (nav)
         self.state_manager.update_state(index, editing=True)
         Logger.debug(f"MDDocumentEditor: Editing line {index}")
 
@@ -543,7 +545,10 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
             col = min(self._edit_goal_col, tlen)
 
         self._edit_last_placed = col
-        self.edit_line(target, cursor_col=col, reset_goal=False)
+        # Slide direccional del gráfico de selección, como en modo selección
+        direction = 'down' if delta > 0 else 'up'
+        self.edit_line(target, cursor_col=col, reset_goal=False,
+                       direction=direction)
         self._scroll_to_line(target)
         return True
 
