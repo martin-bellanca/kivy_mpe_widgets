@@ -829,9 +829,6 @@ class DocumentStateManager(EventDispatcher):
 
         Logger.info(f"DocumentStateManager: Moving line {from_index} -> {to_index}")
 
-        # Guardar estado de membresía
-        was_visible = from_index in self._visible_indices
-        was_selected = from_index in self._selected_indices
         was_active = self._active_index == from_index
 
         # Mover en la lista (pop + insert)
@@ -848,16 +845,10 @@ class DocumentStateManager(EventDispatcher):
             for i in range(to_index, from_index + 1):
                 self._line_states[i].index = i
 
-        # Actualizar sets (simplemente remover old y agregar new)
-        self._visible_indices.discard(from_index)
-        self._filtered_indices.discard(from_index)
-        self._selected_indices.discard(from_index)
-        self._search_matches.discard(from_index)
-
-        if was_visible:
-            self._visible_indices.add(to_index)
-        if was_selected:
-            self._selected_indices.add(to_index)
+        # Reconstruir los sets de índices desde los estados (a prueba de balas:
+        # el movimiento corre los índices de todas las líneas intermedias, no
+        # sólo la movida). Los flags viven en cada LineState (fuente de verdad).
+        self._rebuild_index_sets()
         if was_active:
             self._active_index = to_index
 
@@ -882,9 +873,11 @@ class DocumentStateManager(EventDispatcher):
 
     def update_line_text(self, index: int, text: str) -> bool:
         """
-        Actualizar el texto de una línea.
+        Actualizar el texto de una línea (embudo único de mutación de texto).
 
-        Actualiza el MDLine directamente y detecta nuevo tipo.
+        Rutea por LineState.update_type() para que, si cambia el tipo de línea,
+        se dispare on_type_changed (y los widgets reemplacen el label). Es la
+        vía correcta en vez de escribir md_line.md_text directo desde la UI.
 
         Args:
             index: Índice de la línea
@@ -900,11 +893,9 @@ class DocumentStateManager(EventDispatcher):
         if state.md_line is None:
             return False
 
-        # Actualizar texto en MDLine
+        # Actualizar texto y detectar nuevo tipo (vía LineState → on_type_changed)
         state.md_line.md_text = text
-
-        # Detectar nuevo tipo
-        state.md_line.update_type()
+        state.update_type()
 
         Logger.debug(
             f"DocumentStateManager: Updated text for line {index}, "
@@ -912,6 +903,18 @@ class DocumentStateManager(EventDispatcher):
         )
 
         return True
+
+    def _rebuild_index_sets(self):
+        """
+        Reconstruye los sets de índices (visible/filtered/selected/search) desde
+        los flags de cada LineState. Para usar tras operaciones que corren muchos
+        índices a la vez (p. ej. move_line), donde la aritmética por-índice es
+        propensa a errores. Los flags viven en el LineState (fuente de verdad).
+        """
+        self._visible_indices = {s.index for s in self._line_states if s.visible}
+        self._filtered_indices = {s.index for s in self._line_states if not s.visible}
+        self._selected_indices = {s.index for s in self._line_states if s.selected}
+        self._search_matches = {s.index for s in self._line_states if s.matched_search}
 
     # ========================================================================
     # GEOMETRÍA

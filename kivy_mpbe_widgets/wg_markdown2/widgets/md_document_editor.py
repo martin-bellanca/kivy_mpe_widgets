@@ -151,8 +151,10 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
             minimum_height=self.doc_lines_layout.setter('height')
         )
 
-        # Mapa index -> MDDocumentLine (poblado en populate_md_lines)
-        self._line_widgets = {}
+        # Lista de MDDocumentLine en orden del documento (índice == posición).
+        # Lista (no dict) para que insertar/borrar/mover corran los índices
+        # solos (Inc 3c). Poblada en populate_md_lines.
+        self._line_widgets = []
 
         self.add_widget(self.doc_lines_layout)
 
@@ -161,6 +163,14 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         # ====================================================================
         self.bind(scroll_y=self._on_scroll)
         self.bind(size=self._on_size_changed)
+
+        # Eventos estructurales del StateManager: el editor mantiene sus filas
+        # y el layout en sync con inserciones/borrados/movimientos (Inc 3c).
+        self.state_manager.bind(
+            on_line_added=self._on_line_added,
+            on_line_removed=self._on_line_removed,
+            on_line_moved=self._on_line_moved,
+        )
 
         # Teclado a nivel Window (enfoque robusto, como el editor viejo): así la
         # navegación no depende de que el widget tenga el foco de Kivy (evita que
@@ -185,11 +195,11 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         limpia el layout, el mapa y la referencia a la fila activa.
         Evita fugas de binds al repoblar el documento.
         """
-        for line_widget in self._line_widgets.values():
+        for line_widget in self._line_widgets:
             line_widget.release()
         if self.doc_lines_layout:
             self.doc_lines_layout.clear_widgets()
-        self._line_widgets = {}
+        self._line_widgets = []
         self.active_line_widget = None
 
     def initialize_document(self):
@@ -242,12 +252,33 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         self._kbd_active = False
 
         for line_state in self.state_manager.get_line_states():
-            line_widget = MDDocumentLine(line_state, placement=self.editor_placement)
-            line_widget.on_edit_nav = self._on_line_edit_nav
+            line_widget = self._create_line_widget(line_state)
             self.doc_lines_layout.add_widget(line_widget)
-            self._line_widgets[line_state.index] = line_widget
+            self._line_widgets.append(line_widget)
 
         Logger.info(f"MDDocumentEditorV2: Document populated with {len(md_lines)} lines")
+
+    def _create_line_widget(self, line_state):
+        """
+        Crea una fila MDDocumentLine para `line_state` y le cablea los callbacks
+        del coordinador (navegación entre líneas en edición y tipeo en vivo).
+        No la agrega al layout ni a _line_widgets (eso lo hace quien llama).
+        """
+        line_widget = MDDocumentLine(line_state, placement=self.editor_placement)
+        line_widget.on_edit_nav = self._on_line_edit_nav
+        line_widget.on_edit_text = self._on_line_edit_text
+        return line_widget
+
+    def _on_line_edit_text(self, index: int, text: str):
+        """Embudo de mutación de texto en vivo: pasa por el StateManager."""
+        self.state_manager.update_line_text(index, text)
+
+    def _layout_kivy_index(self, doc_index: int) -> int:
+        """
+        Convierte un índice de documento (0 = arriba) al índice de `add_widget`
+        del BoxLayout (los children están en orden inverso al visual).
+        """
+        return len(self.doc_lines_layout.children) - doc_index
 
     # ========================================================================
     # CARGA DE DOCUMENTO
@@ -431,10 +462,62 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         Devuelve el widget MDDocumentLine de la línea `index`.
 
         Punto único de acceso a los widgets de línea (groundwork para el
-        reciclado del Inc 5): hoy devuelve del mapa `_line_widgets`; en el
+        reciclado del Inc 5): hoy devuelve de la lista `_line_widgets`; en el
         futuro, si la línea no está realizada, hará scroll + la creará.
         """
-        return self._line_widgets.get(index)
+        if 0 <= index < len(self._line_widgets):
+            return self._line_widgets[index]
+        return None
+
+    # ========================================================================
+    # SINCRONIZACIÓN CON EVENTOS ESTRUCTURALES DEL STATEMANAGER (Inc 3c)
+    # ========================================================================
+
+    def _on_line_added(self, state_manager, event):
+        """
+        Una línea nueva se insertó en el StateManager: crea su fila y la agrega
+        al layout y a `_line_widgets` en la posición correcta. El StateManager
+        ya reindexó los line_states; las filas siguientes ajustan su índice solas
+        (MDDocumentLine.index está bindeado a line_state.index).
+        """
+        index = event.index
+        line_widget = self._create_line_widget(event.line_state)
+        self.doc_lines_layout.add_widget(
+            line_widget, index=self._layout_kivy_index(index))
+        self._line_widgets.insert(index, line_widget)
+        Logger.debug(f"MDDocumentEditor: line widget added at {index}")
+
+    def _on_line_removed(self, state_manager, event):
+        """
+        Una línea se eliminó del StateManager: saca su fila del layout y de
+        `_line_widgets`, y la libera (desbindea eventos globales).
+        """
+        index = event.index
+        if not (0 <= index < len(self._line_widgets)):
+            return
+        line_widget = self._line_widgets.pop(index)
+        self.doc_lines_layout.remove_widget(line_widget)
+        line_widget.release()
+        if self.active_line_widget is line_widget:
+            self.active_line_widget = None
+        Logger.debug(f"MDDocumentEditor: line widget removed at {index}")
+
+    def _on_line_moved(self, state_manager, event):
+        """
+        Una línea se movió: reubica su fila en `_line_widgets` y en el layout.
+        """
+        from_index = event.old_index
+        to_index = event.index
+        if not (0 <= from_index < len(self._line_widgets)):
+            return
+        line_widget = self._line_widgets.pop(from_index)
+        self._line_widgets.insert(to_index, line_widget)
+        # Reordenar en el layout: quitar y re-agregar en la posición destino
+        self.doc_lines_layout.remove_widget(line_widget)
+        self.doc_lines_layout.add_widget(
+            line_widget, index=self._layout_kivy_index(to_index))
+        Logger.debug(
+            f"MDDocumentEditor: line widget moved {from_index} -> {to_index}")
 
     # ========================================================================
     # ACTIVACIÓN DE LÍNEA

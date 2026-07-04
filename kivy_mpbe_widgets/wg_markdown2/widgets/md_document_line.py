@@ -102,13 +102,22 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         # Ambos None → cursor al final.
         self._edit_click_pos = None
         self._edit_cursor_col = None
-        # Callback coordinador para saltar la edición a otra línea
-        # (index, delta, cursor_col) -> bool. Lo setea MDDocumentEditor.
+        # Callbacks del coordinador (los setea MDDocumentEditor):
+        # - on_edit_nav(index, delta, cursor_col) -> bool: salto de línea en edición.
+        # - on_edit_text(index, text): embudo de mutación de texto (StateManager).
         self.on_edit_nav = None
+        self.on_edit_text = None
 
-        # Observa el modo edición y los cambios de tipo del LineState
+        # Observa el modo edición, cambios de tipo y de índice del LineState.
+        # El índice sigue al del estado (el StateManager lo reindexa al
+        # insertar/borrar/mover líneas, Inc 3c).
         self.line_state.bind(editing=self._on_editing,
-                             on_type_changed=self._on_type_changed)
+                             on_type_changed=self._on_type_changed,
+                             index=self._on_state_index)
+
+    def _on_state_index(self, line_state, value):
+        """El índice de la fila sigue al del LineState (reindexado estructural)."""
+        self.index = value
 
     def release(self):
         """
@@ -119,7 +128,8 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         self.graphic_hotlight.release()
         Window.unbind(on_key_down=self._on_key_down)
         self.line_state.unbind(editing=self._on_editing,
-                               on_type_changed=self._on_type_changed)
+                               on_type_changed=self._on_type_changed,
+                               index=self._on_state_index)
 
     # ------------------------------------------------------- tipo de línea
     def _on_type_changed(self, line_state, index, old_type, new_type):
@@ -385,11 +395,21 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         self._apply_row_height()
 
     def _on_editor_text(self, instance, value):
-        """Cada cambio de texto persiste en el MDLine y re-renderiza el label en vivo."""
-        self.line_state.md_line.md_text = value
-        # Vía LineState: si cambia el tipo, dispara on_type_changed → swap del label
-        self.line_state.update_type()
+        """Cada cambio de texto persiste (vía StateManager) y re-renderiza en vivo."""
+        self._persist_text(value)
         self.label.md_text = value  # render en tiempo real
+
+    def _persist_text(self, value):
+        """
+        Embudo de mutación de texto: rutea por el coordinador (StateManager) si
+        está cableado; si no (uso sin coordinador), cae al LineState directo.
+        En ambos casos actualiza el tipo (on_type_changed → swap del label).
+        """
+        if self.on_edit_text is not None:
+            self.on_edit_text(self.index, value)
+        else:
+            self.line_state.md_line.md_text = value
+            self.line_state.update_type()
 
     def _on_editor_focus(self, instance, value):
         """
@@ -422,9 +442,8 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
     def _on_key_down(self, window, key, scancode, codepoint, modifier):
         """Escape cancela y restaura el texto original."""
         if key == 27 and self.line_state.editing:  # Escape
-            self.line_state.md_line.md_text = self._edit_original
-            # Vía LineState: restaura también el tipo/label si cambió al editar
-            self.line_state.update_type()
+            # Restaura el texto original por el mismo embudo (repone tipo/label)
+            self._persist_text(self._edit_original)
             self.label.md_text = self._edit_original
             if self.editor is not None:
                 self.editor.text = self._edit_original
