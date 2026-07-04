@@ -92,12 +92,14 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         self.active_line_widget = None
         # Config: ubicación del editor en modo edición ('overlay' | 'below').
         # Honrada como kwarg: MDDocumentEditor(editor_placement='below'|'overlay').
-        #   'overlay' = input translúcido SOBRE el label (sin reflow, enfoque B).
-        #   'below'   = input opaco DEBAJO del label (deslizamiento a comparar).
+        #   'overlay' (default) = input translúcido SOBRE el label: sin reflow y
+        #       deslizamiento suave entre líneas en ambos sentidos.
+        #   'below' = input opaco DEBAJO del label: funcional, pero al saltar de
+        #       línea editando parpadea (el gráfico de selección no acompaña al
+        #       widget cuando la fila reflowea). Queda como opción.
         # Debe fijarse antes de populate_md_lines (cada fila lo toma al crearse).
-        # Rama edicion_placement_config: default 'below' para probar la alternativa.
         self.editor_placement = kwargs.pop('editor_placement',
-                                           EDITOR_PLACEMENT_BELOW)
+                                           EDITOR_PLACEMENT_OVERLAY)
         # self.md_document: Optional[MDDocument] = None  md_document esta en state_manager?
         self.last_scroll_y = 1.0
         # Columna objetivo del cursor en edición (goal column): se mantiene al
