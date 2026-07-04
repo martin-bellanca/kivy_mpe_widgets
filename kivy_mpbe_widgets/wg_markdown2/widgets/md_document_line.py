@@ -105,8 +105,10 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         # Callbacks del coordinador (los setea MDDocumentEditor):
         # - on_edit_nav(index, delta, cursor_col) -> bool: salto de línea en edición.
         # - on_edit_text(index, text): embudo de mutación de texto (StateManager).
+        # - on_edit_split(index, cursor_col): parte la línea en el cursor (Enter).
         self.on_edit_nav = None
         self.on_edit_text = None
+        self.on_edit_split = None
 
         # Observa el modo edición, cambios de tipo y de índice del LineState.
         # El índice sigue al del estado (el StateManager lo reindexa al
@@ -335,6 +337,7 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
     _K_F2 = 283
     _K_UP, _K_DOWN = 273, 274
     _K_LEFT, _K_RIGHT = 276, 275
+    _K_ENTER, _K_NUMPAD_ENTER = 13, 271
 
     def _on_editor_nav(self, keycode, modifiers):
         """
@@ -353,6 +356,9 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         if key == self._K_F2:
             self._commit()
             return True
+        if key in (self._K_ENTER, self._K_NUMPAD_ENTER):
+            # Enter en edición parte la línea en el cursor (Inc 3c.1)
+            return self._request_edit_split()
         if key == self._K_UP:
             return self._request_edit_move(-1, self.editor.cursor_col)
         if key == self._K_DOWN:
@@ -377,6 +383,20 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         index = self.index
         Clock.schedule_once(
             lambda dt: self.on_edit_nav(index, delta, cursor_col), 0)
+        return True
+
+    def _request_edit_split(self):
+        """
+        Pide al coordinador partir la línea en la columna del cursor (Enter en
+        edición). Consume la tecla. Diferido un frame (misma razón que
+        _request_edit_move: estamos dentro del keyboard callback del input).
+        """
+        if self.on_edit_split is None:
+            return False
+        index = self.index
+        cursor_col = self.editor.cursor_col
+        Clock.schedule_once(
+            lambda dt: self.on_edit_split(index, cursor_col), 0)
         return True
 
     def _exit_edit(self):

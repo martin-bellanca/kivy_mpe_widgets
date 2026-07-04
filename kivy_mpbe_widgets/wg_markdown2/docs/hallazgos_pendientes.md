@@ -85,25 +85,32 @@ estado. Actualizar al corregir o al descubrir nuevos.
   `label.height`; falta propagar a `state_manager.update_line_height`) antes o al
   comenzar el Inc 5.
 
-### ⬜ 8. `move_line` no reindexa los sets intermedios → **antes de 3c/3e**
-- `core/state_manager.py`: al mover una línea, los índices de las líneas intermedias
-  se corren, pero `_visible/_filtered/_selected/_search_matches` sólo corrigen la
-  línea movida. Con filtros activos o selección múltiple corrompe los sets.
-- **Acción:** reindexar los sets completos (como hacen `insert_line`/`remove_line`)
-  al implementar Alt+↑↓ (3c).
+### ✅ 8. `move_line` no reindexaba los sets intermedios (Inc 3c.0)
+- `move_line` ahora reconstruye los sets desde los flags de cada LineState
+  (`_rebuild_index_sets`), a prueba del corrimiento de índices de las líneas
+  intermedias. Verificado: selección múltiple sobrevive al move.
 
-### ⬜ 9. El editor no escucha los eventos estructurales → **Inc 3c**
-- Nadie bindea `on_line_added/removed/moved`; ni `MDDocumentLine.index` ni el mapa
-  `_line_widgets` siguen las reindexaciones del StateManager.
-- **Acción:** diseñarlo en 3c (el editor bindea los 3 eventos y ajusta filas/mapa;
-  o las filas derivan su índice de `line_state.index`).
+### ✅ 9. El editor no escuchaba los eventos estructurales (Inc 3c.0)
+- El editor bindea `on_line_added/removed/moved` y mantiene filas + BoxLayout en
+  sync (`_on_line_added/removed/moved`); `_line_widgets` pasó de dict a lista;
+  `MDDocumentLine.index` sigue a `line_state.index`.
 
-### ⬜ 10. La edición bypasea al StateManager → **decisión de diseño (3c)**
-- `_on_editor_text` escribe `md_line.md_text` directo en vez de
-  `state_manager.update_line_text(index, text)`. Funciona (MDLine compartido) pero
-  rompe la convención de única fuente de verdad y el StateManager no se entera de los
-  cambios (relevante para undo / guardado sucio futuros).
-- **Acción propuesta:** canalizar por `update_line_text` cuando se toque 3c.
+### ✅ 10. La edición ruteaba fuera del StateManager (Inc 3c.0)
+- El tipeo en vivo y el Escape pasan por `state_manager.update_line_text`
+  (embudo único, callback `on_edit_text`); `update_line_text` rutea por
+  `LineState.update_type()` para disparar `on_type_changed`.
+
+### ✅ A. MDDocument sin API estructural; el StateManager orquesta (Inc 3c.0)
+- Había **dos colecciones paralelas**: `md_document._md_lines` (guardable) y
+  `state_manager._line_states`; las operaciones estructurales sólo tocaban la
+  segunda → data loss al guardar. Además la API estructural de MDDocument estaba
+  muerta y buggy.
+- **Resuelto:** se removió la API estructural de MDDocument (queda como capa de
+  lectura/escritura); `insert_line/remove_line/move_line` del StateManager
+  sincronizan `md_document._md_lines` + links + num_line (`_sync_md_lines`).
+  Verificado: split/insert/remove/move dejan el documento guardable y coherente.
+- **Pendiente derivado:** la navegación por títulos (que usa `MDLine.prev/next`)
+  se reimplementará sobre el orden del StateManager en **Inc 3d**.
 
 ### ⬜ 11b. Menores / limpieza
 - `md_inputs.py`: el kv declara `<MDLineTextInput@TextInput>` como *dynamic class*

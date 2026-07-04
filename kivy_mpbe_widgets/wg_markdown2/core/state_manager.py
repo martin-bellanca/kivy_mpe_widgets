@@ -740,7 +740,8 @@ class DocumentStateManager(EventDispatcher):
         if self._active_index is not None and self._active_index >= index:
             self._active_index += 1
 
-        # Recalcular geometría
+        # Sincronizar el documento (lista guardable + links) y geometría
+        self._sync_md_lines()
         self._recalculate_geometry()
 
         # Disparar evento
@@ -792,7 +793,8 @@ class DocumentStateManager(EventDispatcher):
         elif self._active_index is not None and self._active_index > index:
             self._active_index -= 1
 
-        # Recalcular geometría
+        # Sincronizar el documento (lista guardable + links) y geometría
+        self._sync_md_lines()
         self._recalculate_geometry()
 
         # Disparar evento
@@ -852,7 +854,8 @@ class DocumentStateManager(EventDispatcher):
         if was_active:
             self._active_index = to_index
 
-        # Recalcular geometría
+        # Sincronizar el documento (lista guardable + links) y geometría
+        self._sync_md_lines()
         self._recalculate_geometry()
 
         # Disparar evento
@@ -915,6 +918,26 @@ class DocumentStateManager(EventDispatcher):
         self._filtered_indices = {s.index for s in self._line_states if not s.visible}
         self._selected_indices = {s.index for s in self._line_states if s.selected}
         self._search_matches = {s.index for s in self._line_states if s.matched_search}
+
+    def _sync_md_lines(self):
+        """
+        Sincroniza md_document._md_lines con el orden actual de _line_states
+        (fuente de verdad del orden). Tras insertar/borrar/mover, deja el
+        documento guardable y repone los links de cada MDLine (prev/next) y el
+        num_line por posición. O(n), pero se llama en acciones de usuario.
+
+        La mutación estructural la orquesta este StateManager (MDDocument ya no
+        tiene API estructural propia).
+        """
+        if self.md_document is None:
+            return
+        md_lines = [s.md_line for s in self._line_states]
+        self.md_document._md_lines = md_lines
+        n = len(md_lines)
+        for i, ml in enumerate(md_lines):
+            ml.prev_line = md_lines[i - 1] if i > 0 else None
+            ml.next_line = md_lines[i + 1] if i < n - 1 else None
+            ml.set_num_line(i + 1)
 
     # ========================================================================
     # GEOMETRÍA

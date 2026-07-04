@@ -267,11 +267,35 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         line_widget = MDDocumentLine(line_state, placement=self.editor_placement)
         line_widget.on_edit_nav = self._on_line_edit_nav
         line_widget.on_edit_text = self._on_line_edit_text
+        line_widget.on_edit_split = self._on_line_edit_split
         return line_widget
 
     def _on_line_edit_text(self, index: int, text: str):
         """Embudo de mutación de texto en vivo: pasa por el StateManager."""
         self.state_manager.update_line_text(index, text)
+
+    def _on_line_edit_split(self, index: int, cursor_col: int):
+        """
+        Parte la línea `index` en la columna del cursor (Enter en edición, 3c.1):
+        la línea actual conserva el texto anterior al cursor y una línea nueva
+        debajo se lleva el posterior; la edición pasa a la nueva (cursor al inicio).
+        La línea que se deja confirma al desactivarse.
+        """
+        md_line = self.state_manager.get_md_line(index)
+        if md_line is None:
+            return
+        text = md_line.md_text
+        col = max(0, min(cursor_col, len(text)))
+        before, after = text[:col], text[col:]
+
+        # La línea actual conserva 'before' (por el embudo del StateManager)
+        self.state_manager.update_line_text(index, before)
+        # Nueva línea debajo con 'after' → on_line_added crea su fila
+        new_md_line = MDLine(after, None, None)
+        new_md_line.update_type()
+        self.state_manager.insert_line(index + 1, new_md_line)
+        # Editar la nueva línea con el cursor al inicio
+        self.edit_line(index + 1, cursor_col=0)
 
     def _layout_kivy_index(self, doc_index: int) -> int:
         """
