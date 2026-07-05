@@ -108,6 +108,10 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         # movimiento horizontal del usuario entre saltos verticales).
         self._edit_goal_col = None
         self._edit_last_placed = None
+        # Selección múltiple contigua (Inc 3e): índices con verde y ancla del
+        # rango (donde arrancó la selección con Shift).
+        self._selected_set = set()
+        self._selection_anchor = None
 
         # ====================================================================
         # Configuración de ScrollView (ANTES de super().__init__)
@@ -207,6 +211,8 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
             self.doc_lines_layout.clear_widgets()
         self._line_widgets = []
         self.active_line_widget = None
+        self._selected_set = set()
+        self._selection_anchor = None
 
     def initialize_document(self):
         """
@@ -278,7 +284,18 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         line_widget.on_edit_move_line = self._on_line_edit_move_line
         line_widget.on_edit_insert_above = self._on_line_edit_insert_above
         line_widget.on_edit_title_nav = self._on_line_edit_title_nav
+        line_widget.on_edit_select = self._on_line_edit_select
         return line_widget
+
+    def _on_line_edit_select(self, direction: int):
+        """
+        Shift+↑↓ en edición (3e.1): sale de edición a visualización y extiende
+        la selección desde la línea activa.
+        """
+        idx = self.state_manager.get_active_index()
+        if idx is not None:
+            self.state_manager.update_state(idx, editing=False)  # sale de edición
+        self.extend_selection(direction)
 
     def _on_line_edit_text(self, index: int, text: str):
         """Embudo de mutación de texto en vivo: pasa por el StateManager."""
@@ -621,31 +638,98 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
                 (navegación con flechas, deslizamiento).
         """
         old_index = self.state_manager.get_active_index()
-        if old_index == index:
-            return  # ya está activa
+        if old_index == index and self._selected_set == {index}:
+            return  # ya está activa y es la única seleccionada
 
-        # Animar salida de la línea previa
-        if old_index is not None:
-            old_widget = self.get_line_widget(old_index)
-            if old_widget is not None:
-                old_widget.unselect(direction)
+        # Selección simple: limpiar el verde de TODO el bloque seleccionado
+        # anterior (para single es sólo la vieja activa; colapsa una multi-sel).
+        for i in self._selected_set:
+            if i != index:
+                w = self.get_line_widget(i)
+                if w is not None:
+                    w.unselect(direction)
 
         # Actualizar estado (fuente de verdad)
         ok = self.state_manager.activate_line(index, enter_edit=enter_edit_mode)
         if not ok:
             return
 
-        # Animar entrada de la nueva línea
+        # Animar entrada de la nueva línea (si no estaba ya en verde)
         new_widget = self.get_line_widget(index)
-        if new_widget is not None:
+        if new_widget is not None and index not in self._selected_set:
             new_widget.select(direction)
         self.active_line_widget = new_widget
+
+        # Selección = {index}; sin ancla de multi-selección
+        self._selected_set = {index}
+        self._selection_anchor = None
+        self._sync_selected_flags()
 
         # Marca este documento como destino del teclado para que las flechas
         # naveguen (el handler está a nivel Window). Foco fino entre paneles = Inc 4.
         self._kbd_active = True
 
         Logger.debug(f"MDDocumentEditor: Activated line {index}")
+
+    # ========================================================================
+    # SELECCIÓN MÚLTIPLE CONTIGUA (Shift+↑↓ / Shift+Click — Inc 3e)
+    # ========================================================================
+
+    def _sync_selected_flags(self):
+        """Refleja `_selected_set` en los flags `selected` del StateManager."""
+        self.state_manager.clear_selection()
+        for i in self._selected_set:
+            self.state_manager.select_line(i, multi=True)
+
+    def extend_selection(self, direction: int) -> bool:
+        """
+        Extiende la selección contigua con Shift+↑↓. La primera vez fija el
+        ancla en la línea activa; luego mueve el extremo activo y el bloque
+        seleccionado es [min(ancla, activo) .. max(ancla, activo)].
+        """
+        active = self.state_manager.get_active_index()
+        if active is None:
+            return False
+        total = self.state_manager.get_total_lines()
+        new_active = active + direction
+        if not (0 <= new_active < total):
+            return False  # borde del documento
+        if self._selection_anchor is None:
+            self._selection_anchor = active
+
+        lo = min(self._selection_anchor, new_active)
+        hi = max(self._selection_anchor, new_active)
+        new_set = set(range(lo, hi + 1))
+
+        # Diff visual del verde (fade para el bloque)
+        for i in self._selected_set - new_set:
+            w = self.get_line_widget(i)
+            if w is not None:
+                w.unselect('fade')
+        for i in new_set - self._selected_set:
+            w = self.get_line_widget(i)
+            if w is not None:
+                w.select('fade')
+        self._selected_set = new_set
+
+        # Mover el extremo activo (sin rehacer el verde de selección simple)
+        self.state_manager.activate_line(new_active)
+        self.active_line_widget = self.get_line_widget(new_active)
+        self._sync_selected_flags()
+        self._scroll_to_line(new_active)
+        return True
+
+    def clear_multi_selection(self):
+        """Escape: colapsa la selección múltiple a la línea activa."""
+        active = self.state_manager.get_active_index()
+        for i in self._selected_set:
+            if i != active:
+                w = self.get_line_widget(i)
+                if w is not None:
+                    w.unselect('fade')
+        self._selected_set = {active} if active is not None else set()
+        self._selection_anchor = None
+        self._sync_selected_flags()
 
     def edit_line(self, index: int, click_pos=None, cursor_col=None,
                   reset_goal=True, direction='fade'):
@@ -814,6 +898,7 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
     _K_HOME, _K_END = 278, 279
     _K_ENTER, _K_NUMPAD_ENTER = 13, 271
     _K_F2 = 283
+    _K_ESCAPE = 27
 
     def _is_editing(self) -> bool:
         """True si la línea activa está en modo edición."""
@@ -850,6 +935,8 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
                 if 'shift' in mods:
                     return self._go_to_title(-1, 'parent')
                 return self.move_active_line(-1)
+            if 'shift' in mods:          # Shift+↑ extiende la selección (3e.1)
+                return self.extend_selection(-1)
             return self._navigate(-1)
         elif key == self._K_DOWN:
             if 'ctrl' in mods:  # Ctrl+↓ título (3d): +Shift mismo nivel
@@ -858,6 +945,8 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
                 if 'shift' in mods:
                     return self._go_to_title(1, 'parent')
                 return self.move_active_line(1)
+            if 'shift' in mods:          # Shift+↓ extiende la selección (3e.1)
+                return self.extend_selection(1)
             return self._navigate(1)
         elif key == self._K_PAGEUP:
             return self._navigate(-self._page_size())
@@ -873,6 +962,10 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
             # Enter o F2 sobre la línea activa → entrar en edición (Inc 3b).
             # F2 para salir de edición (toggle) y las flechas en edición son 3b.2.
             return self._edit_active_line()
+        elif key == self._K_ESCAPE and len(self._selected_set) > 1:
+            # Escape colapsa la selección múltiple a la línea activa (3e.1)
+            self.clear_multi_selection()
+            return True
         return False
 
     def _edit_active_line(self) -> bool:

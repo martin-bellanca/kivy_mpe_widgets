@@ -111,6 +111,7 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         # - on_edit_move_line(index, delta): mueve la línea (Alt+↑↓ en edición).
         # - on_edit_insert_above(index): inserta línea vacía arriba (Shift+Enter).
         # - on_edit_title_nav(direction, kind): navega por títulos (Ctrl+↑↓, etc.).
+        # - on_edit_select(direction): sale de edición y extiende selección (Shift+↑↓).
         self.on_edit_nav = None
         self.on_edit_text = None
         self.on_edit_split = None
@@ -118,6 +119,7 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         self.on_edit_move_line = None
         self.on_edit_insert_above = None
         self.on_edit_title_nav = None
+        self.on_edit_select = None
 
         # Observa el modo edición, cambios de tipo y de índice del LineState.
         # El índice sigue al del estado (el StateManager lo reindexa al
@@ -380,6 +382,8 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
                 if 'shift' in modifiers:
                     return self._request_edit_title_nav(-1, 'parent')
                 return self._request_edit_move_line(-1)
+            if 'shift' in modifiers:     # Shift+↑ sale de edición y selecciona (3e.1)
+                return self._request_edit_select(-1)
             return self._request_edit_move(-1, self.editor.cursor_col)
         if key == self._K_DOWN:
             if 'ctrl' in modifiers:  # Ctrl+↓ título (3d): +Shift mismo nivel
@@ -389,6 +393,8 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
                 if 'shift' in modifiers:
                     return self._request_edit_title_nav(1, 'parent')
                 return self._request_edit_move_line(1)
+            if 'shift' in modifiers:     # Shift+↓ sale de edición y selecciona (3e.1)
+                return self._request_edit_select(1)
             return self._request_edit_move(1, self.editor.cursor_col)
         if key == self._K_LEFT and self.editor.cursor_index() == 0:
             return self._request_edit_move(-1, 'end')
@@ -483,6 +489,17 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         cursor_col = self.editor.cursor_col
         Clock.schedule_once(
             lambda dt: self.on_edit_title_nav(direction, kind, cursor_col), 0)
+        return True
+
+    def _request_edit_select(self, direction):
+        """
+        Shift+↑↓ en edición: sale de edición a visualización y extiende la
+        selección `direction`. Consume la tecla. Diferido un frame.
+        """
+        if self.on_edit_select is None:
+            return False
+        Clock.schedule_once(
+            lambda dt: self.on_edit_select(direction), 0)
         return True
 
     def _exit_edit(self):

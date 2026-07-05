@@ -97,15 +97,24 @@ combinaciones de teclado/mouse** del editor V2, con columnas de **sub-tarea** y
 
 ## Inc 3e — Selección múltiple de líneas
 
-| Acción | Modo | Descripción | Método Origen | EventType | Estado |
-|---|---|---|---|---|---|
-| Ctrl+A | False | Seleccionar todo | `_handle_select_all()` | BATCH | ⬜ |
-| Ctrl+A | True | Sale de edición y selecciona todo | `_handle_select_all()` | BATCH | ⬜ |
-| Escape | False | Limpiar selección de líneas | `_handle_escape()` | — | ⬜ |
-| Shift+↑ | False | Selecciona líneas hacia arriba | `_handle_shift_up()` | — | ⬜ |
-| Shift+↓ | False | Selecciona líneas hacia abajo | `_handle_shift_down()` | — | ⬜ |
-| Ctrl+Click | False | Apilar / toggle selección | `_on_click(ctrl)` | `selected` | ⬜ |
-| Shift+Click | False | Extender selección | `_on_click(shift)` | `selected` | ⬜ |
+> **Alcance (esta versión):** selección **contigua**, sólo **Shift+↑↓** y
+> **Shift+Click**, en modo visualización (desde edición, Shift+flecha/click sale
+> a visualización y selecciona). Sin Ctrl+A ni Ctrl+Click en esta etapa. La
+> selección es para aplicar **acciones** al bloque (ver 3e.3+).
+
+| Acción | Modo | Descripción | Método Origen | Estado |
+|---|---|---|---|---|
+| Shift+↑ | False | Extiende la selección contigua hacia arriba | `extend_selection(-1)` | ✅ |
+| Shift+↓ | False | Extiende la selección contigua hacia abajo | `extend_selection(+1)` | ✅ |
+| Shift+↑↓ | True | Sale de edición a visualización y extiende la selección | `_on_line_edit_select()` | ✅ |
+| Escape | False | Colapsa la selección múltiple a la línea activa | `clear_multi_selection()` | ✅ |
+| Shift+Click | False | Extiende la selección hasta la línea clickeada | `_on_click(shift)` | ⬜ 3e.2 |
+| Delete | False | Borra las líneas seleccionadas | `_handle_delete()` | ⬜ 3e.3 |
+| Alt+↑↓ | False | Mueve el bloque seleccionado | `move_selection()` | ⬜ 3e.3 |
+| Ctrl+C/X/V | False | Copiar/cortar/pegar el bloque | — | ⬜ 3e.4 |
+| Ctrl+D | False | Duplicar el bloque | — | ⬜ 3e.5 |
+| Tab / Shift+Tab | False | Indentar / desindentar el bloque | — | ⬜ 3e.6 |
+| Toggle tarea | False | `[ ]`↔`[x]` sobre el bloque | — | ⬜ 3e.7 |
 
 ---
 
