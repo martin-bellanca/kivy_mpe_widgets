@@ -127,5 +127,5 @@ combinaciones de teclado/mouse** del editor V2, con columnas de **sub-tarea** y
 | Grupo | Acciones | Estado | Nota |
 |---|---|---|---|
 | Undo / Redo | Ctrl+Z, Ctrl+Y | ⬜ | Requiere UndoManager (existe en kivy_mpbe_widgets) |
-| Papelera / Portapapeles | Ctrl+C, Ctrl+V, Ctrl+X | ⬜ | Copiar/pegar/cortar líneas |
+| Papelera / Portapapeles | Ctrl+C, Ctrl+V, Ctrl+X | ✅ | Copiar/pegar/cortar líneas (implementado en Inc 3e.4, clipboard interno + sistema) |
 | Filtros | UI filtro: aplicar / limpiar | 🟡 | Ya integrado a nivel app (FilterService); falta atar al StateManager V2 |
