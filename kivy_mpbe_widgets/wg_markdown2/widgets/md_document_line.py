@@ -110,12 +110,14 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         #   Backspace) o de abajo (+1, Delete).
         # - on_edit_move_line(index, delta): mueve la línea (Alt+↑↓ en edición).
         # - on_edit_insert_above(index): inserta línea vacía arriba (Shift+Enter).
+        # - on_edit_title_nav(direction, kind): navega por títulos (Ctrl+↑↓, etc.).
         self.on_edit_nav = None
         self.on_edit_text = None
         self.on_edit_split = None
         self.on_edit_merge = None
         self.on_edit_move_line = None
         self.on_edit_insert_above = None
+        self.on_edit_title_nav = None
 
         # Observa el modo edición, cambios de tipo y de índice del LineState.
         # El índice sigue al del estado (el StateManager lo reindexa al
@@ -371,10 +373,14 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
             # Enter parte la línea en el cursor (Inc 3c.1)
             return self._request_edit_split()
         if key == self._K_UP:
+            if 'ctrl' in modifiers and 'shift' not in modifiers:  # Ctrl+↑ título (3d.1)
+                return self._request_edit_title_nav(-1, 'any')
             if 'alt' in modifiers:       # Alt+↑ mueve la línea (3c.3)
                 return self._request_edit_move_line(-1)
             return self._request_edit_move(-1, self.editor.cursor_col)
         if key == self._K_DOWN:
+            if 'ctrl' in modifiers and 'shift' not in modifiers:  # Ctrl+↓ título (3d.1)
+                return self._request_edit_title_nav(1, 'any')
             if 'alt' in modifiers:       # Alt+↓ mueve la línea (3c.3)
                 return self._request_edit_move_line(1)
             return self._request_edit_move(1, self.editor.cursor_col)
@@ -458,6 +464,19 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         index = self.index
         Clock.schedule_once(
             lambda dt: self.on_edit_move_line(index, delta), 0)
+        return True
+
+    def _request_edit_title_nav(self, direction, kind):
+        """
+        Pide al coordinador navegar por títulos desde edición (Ctrl+↑↓, etc.):
+        edita el título destino manteniendo la columna del cursor. Consume la
+        tecla. Diferido un frame (cambia activación/foco).
+        """
+        if self.on_edit_title_nav is None:
+            return False
+        cursor_col = self.editor.cursor_col
+        Clock.schedule_once(
+            lambda dt: self.on_edit_title_nav(direction, kind, cursor_col), 0)
         return True
 
     def _exit_edit(self):

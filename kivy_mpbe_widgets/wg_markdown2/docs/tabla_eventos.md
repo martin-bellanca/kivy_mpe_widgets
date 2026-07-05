@@ -85,8 +85,8 @@ combinaciones de teclado/mouse** del editor V2, con columnas de **sub-tarea** y
 
 | Acción | Modo | Descripción | Método Origen | Estado |
 |---|---|---|---|---|
-| Ctrl+↑ | T/F | Mueve la selección al título anterior | `_handle_prev_title()` | ⬜ |
-| Ctrl+↓ | T/F | Mueve la selección al título siguiente | `_handle_next_title()` | ⬜ |
+| Ctrl+↑ | T/F | Mueve la selección al título anterior (cualquier nivel) | `_go_to_title(-1,'any')` | ✅ |
+| Ctrl+↓ | T/F | Mueve la selección al título siguiente (cualquier nivel) | `_go_to_title(+1,'any')` | ✅ |
 | Ctrl+Shift+↑ | T/F | Título anterior del mismo nivel | `_handle_prev_title_level()` | ⬜ |
 | Ctrl+Shift+↓ | T/F | Título siguiente del mismo nivel | `_handle_next_title_level()` | ⬜ |
 | Alt+Shift+↑ | T/F | Título padre anterior | `_handle_parent_title()` | ⬜ |

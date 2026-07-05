@@ -386,6 +386,39 @@ class DocumentStateManager(EventDispatcher):
         """
         return len(self._line_states)
 
+    # ------------------------------------------------------------ títulos (3d)
+    def find_title_index(self, from_index, direction, predicate=None):
+        """
+        Escanea `_line_states` desde `from_index` en `direction` (±1) y devuelve
+        el índice del primer título que cumple `predicate(level)` (o cualquier
+        título si predicate es None). None si no hay.
+        """
+        if from_index is None:
+            from_index = -1 if direction > 0 else len(self._line_states)
+        i = from_index + direction
+        while 0 <= i < len(self._line_states):
+            st = self._line_states[i]
+            if st.is_title() and (predicate is None or predicate(st.get_title_level())):
+                return i
+            i += direction
+        return None
+
+    def get_reference_title_level(self, index):
+        """
+        Nivel de referencia para navegar por títulos: el nivel del título en
+        `index` si lo es, o el del título contenedor más cercano hacia arriba.
+        0 si no hay ninguno.
+        """
+        if index is None:
+            return 0
+        i = index
+        while i >= 0:
+            st = self._line_states[i]
+            if st.is_title():
+                return st.get_title_level()
+            i -= 1
+        return 0
+
     def get_visible_lines_count(self) -> int:
         """
         Obtener número de líneas visibles (no filtradas).

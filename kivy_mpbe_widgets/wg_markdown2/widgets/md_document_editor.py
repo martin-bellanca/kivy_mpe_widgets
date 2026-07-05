@@ -277,6 +277,7 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         line_widget.on_edit_merge = self._on_line_edit_merge
         line_widget.on_edit_move_line = self._on_line_edit_move_line
         line_widget.on_edit_insert_above = self._on_line_edit_insert_above
+        line_widget.on_edit_title_nav = self._on_line_edit_title_nav
         return line_widget
 
     def _on_line_edit_text(self, index: int, text: str):
@@ -755,6 +756,46 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         if line_widget is not None and line_widget.editor is not None:
             line_widget.editor.focus = True
 
+    # ========================================================================
+    # NAVEGACIÓN POR TÍTULOS (Ctrl+↑↓, etc. — Inc 3d)
+    # ========================================================================
+
+    def _go_to_title(self, direction: int, kind: str = 'any',
+                     cursor_col=None) -> bool:
+        """
+        Mueve la selección al título anterior/siguiente. `direction` ±1.
+        `kind`: 'any' (cualquier nivel), 'same' (mismo nivel que el título de
+        referencia), 'parent' (nivel superior en la jerarquía).
+
+        Conserva el modo: si `cursor_col` viene (veníamos de edición) edita el
+        título destino manteniendo la columna del cursor (clampada a su largo);
+        si es None (selección) lo selecciona. Devuelve True si se movió.
+        """
+        active = self.state_manager.get_active_index()
+        if kind == 'any':
+            predicate = None
+        else:
+            ref = self.state_manager.get_reference_title_level(active)
+            if kind == 'same':
+                predicate = lambda lvl: lvl == ref
+            else:  # 'parent': primer título de nivel menor (más arriba en jerarquía)
+                predicate = lambda lvl: 0 < lvl < ref
+        target = self.state_manager.find_title_index(active, direction, predicate)
+        if target is None:
+            return False
+        slide = 'down' if direction > 0 else 'up'
+        if cursor_col is not None:
+            # Conservar edición y columna del cursor (clampada en _place_cursor)
+            self.edit_line(target, cursor_col=cursor_col, direction=slide)
+        else:
+            self.activate_line(target, direction=slide)
+        self._scroll_to_line(target)
+        return True
+
+    def _on_line_edit_title_nav(self, direction: int, kind: str, cursor_col: int):
+        """Navegación por títulos desde edición: edita el título manteniendo la columna."""
+        self._go_to_title(direction, kind, cursor_col=cursor_col)
+
     def deactivate_current_line(self):
         """Desactivar la línea activa actual (delegado al StateManager)."""
         active_index = self.state_manager.get_active_index()
@@ -803,10 +844,14 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         mods = modifiers or []
 
         if key == self._K_UP:
+            if 'ctrl' in mods and 'shift' not in mods:  # Ctrl+↑ título anterior (3d.1)
+                return self._go_to_title(-1, 'any')
             if 'alt' in mods:            # Alt+↑ mueve la línea activa (3c.3)
                 return self.move_active_line(-1)
             return self._navigate(-1)
         elif key == self._K_DOWN:
+            if 'ctrl' in mods and 'shift' not in mods:  # Ctrl+↓ título siguiente (3d.1)
+                return self._go_to_title(1, 'any')
             if 'alt' in mods:            # Alt+↓ mueve la línea activa (3c.3)
                 return self.move_active_line(1)
             return self._navigate(1)
