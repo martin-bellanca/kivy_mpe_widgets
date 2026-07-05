@@ -106,9 +106,12 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         # - on_edit_nav(index, delta, cursor_col) -> bool: salto de línea en edición.
         # - on_edit_text(index, text): embudo de mutación de texto (StateManager).
         # - on_edit_split(index, cursor_col): parte la línea en el cursor (Enter).
+        # - on_edit_merge(index, direction): une con la línea de arriba (-1,
+        #   Backspace) o de abajo (+1, Delete).
         self.on_edit_nav = None
         self.on_edit_text = None
         self.on_edit_split = None
+        self.on_edit_merge = None
 
         # Observa el modo edición, cambios de tipo y de índice del LineState.
         # El índice sigue al del estado (el StateManager lo reindexa al
@@ -338,6 +341,7 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
     _K_UP, _K_DOWN = 273, 274
     _K_LEFT, _K_RIGHT = 276, 275
     _K_ENTER, _K_NUMPAD_ENTER = 13, 271
+    _K_BACKSPACE, _K_DELETE = 8, 127
 
     def _on_editor_nav(self, keycode, modifiers):
         """
@@ -367,6 +371,14 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
             return self._request_edit_move(-1, 'end')
         if key == self._K_RIGHT and self.editor.cursor_index() == len(self.editor.text):
             return self._request_edit_move(1, 'start')
+        # Backspace al inicio (no primera) → une con la línea de arriba (Inc 3c.2)
+        if (key == self._K_BACKSPACE and self.editor.cursor_index() == 0
+                and self.index > 0):
+            return self._request_edit_merge(-1)
+        # Delete al final → une con la de abajo (el borde 'última' lo ve el coord)
+        if (key == self._K_DELETE
+                and self.editor.cursor_index() == len(self.editor.text)):
+            return self._request_edit_merge(1)
         return False
 
     def _request_edit_move(self, delta, cursor_col):
@@ -397,6 +409,19 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         cursor_col = self.editor.cursor_col
         Clock.schedule_once(
             lambda dt: self.on_edit_split(index, cursor_col), 0)
+        return True
+
+    def _request_edit_merge(self, direction):
+        """
+        Pide al coordinador unir esta línea con la de arriba (direction -1,
+        Backspace) o con la de abajo (direction +1, Delete). Consume la tecla.
+        Diferido un frame (misma razón que _request_edit_move/_split).
+        """
+        if self.on_edit_merge is None:
+            return False
+        index = self.index
+        Clock.schedule_once(
+            lambda dt: self.on_edit_merge(index, direction), 0)
         return True
 
     def _exit_edit(self):

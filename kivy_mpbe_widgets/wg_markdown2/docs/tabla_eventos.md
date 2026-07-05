@@ -75,8 +75,8 @@ combinaciones de teclado/mouse** del editor V2, con columnas de **sub-tarea** y
 |---|---|---|---|---|---|---|
 | Enter | True | **Parte la línea en el cursor**: inserta línea abajo con el texto posterior al cursor; la actual conserva el anterior | `_on_editor_nav()`→`_on_line_edit_split()` | ADDED | `_on_line_added()` | ✅ |
 | Shift+Enter | True | Insertar línea arriba | `_handle_enter(shift)` | ADDED | `_on_line_added()` | ⬜ |
-| Backspace | True | Al inicio de línea: borra la línea y mueve el texto al final de la anterior | `_handle_delete()` | REMOVED | `_on_line_removed()` | ⬜ |
-| Delete | True | Al inicio de línea: une con la siguiente | `_handle_delete()` | REMOVED | `_on_line_removed()` | ⬜ |
+| Backspace | True | Al inicio de línea: une con la de arriba (el texto va al final de la anterior; cursor en el punto de unión) | `_on_editor_nav()`→`_on_line_edit_merge(-1)` | REMOVED | `_on_line_removed()` | ✅ |
+| Delete | True | Al final de línea: une con la de abajo (el texto de la siguiente va al final de la actual; cursor en el punto de unión) | `_on_editor_nav()`→`_on_line_edit_merge(+1)` | REMOVED | `_on_line_removed()` | ✅ |
 | Delete (multi) | False | Elimina las líneas seleccionadas | `_handle_delete()` | BATCH | `_on_batch_change()` | ⬜ |
 | Alt+↑ | T/F | Mover línea arriba | `_handle_arrow_up(alt)` | MOVED | `_on_line_moved()` | ⬜ |
 | Alt+↓ | T/F | Mover línea abajo | `_handle_arrow_down(alt)` | MOVED | `_on_line_moved()` | ⬜ |

@@ -274,6 +274,7 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         line_widget.on_edit_nav = self._on_line_edit_nav
         line_widget.on_edit_text = self._on_line_edit_text
         line_widget.on_edit_split = self._on_line_edit_split
+        line_widget.on_edit_merge = self._on_line_edit_merge
         return line_widget
 
     def _on_line_edit_text(self, index: int, text: str):
@@ -302,6 +303,45 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         self.state_manager.insert_line(index + 1, new_md_line)
         # Editar la nueva línea con el cursor al inicio
         self.edit_line(index + 1, cursor_col=0)
+
+    def _on_line_edit_merge(self, index: int, direction: int):
+        """
+        Une líneas en edición (Inc 3c.2):
+        - direction -1 (Backspace al inicio): une la línea `index` con la de
+          arriba; el texto se agrega al final de la anterior, `index` se borra
+          y la edición pasa a la anterior con el cursor en el punto de unión.
+        - direction +1 (Delete al final): une la de abajo con `index`; el texto
+          de la siguiente se agrega al final de la actual, la siguiente se borra
+          y la edición sigue en `index` con el cursor en el punto de unión.
+        """
+        if direction < 0:
+            # Backspace: unir con la línea de arriba
+            if index <= 0:
+                return
+            prev = index - 1
+            prev_text = self.state_manager.get_md_line(prev).md_text
+            cur_text = self.state_manager.get_md_line(index).md_text
+            join_col = len(prev_text)
+            self.state_manager.update_line_text(prev, prev_text + cur_text)
+            self.state_manager.remove_line(index)   # borra la actual (en edición)
+            # La anterior no estaba en edición → edit_line arranca su editor
+            # con el texto ya unido y el cursor en el punto de unión.
+            self.edit_line(prev, cursor_col=join_col)
+        else:
+            # Delete: unir con la línea de abajo
+            if index >= self.state_manager.get_total_lines() - 1:
+                return
+            nxt = index + 1
+            cur_text = self.state_manager.get_md_line(index).md_text
+            next_text = self.state_manager.get_md_line(nxt).md_text
+            join_col = len(cur_text)
+            self.state_manager.remove_line(nxt)      # borra la de abajo
+            # La actual ya está en edición → refresco su editor con el texto
+            # unido (setear .text persiste vía embudo y re-renderiza el label).
+            line_widget = self.get_line_widget(index)
+            if line_widget is not None and line_widget.editor is not None:
+                line_widget.editor.text = cur_text + next_text
+                line_widget.editor.cursor = (join_col, 0)
 
     def _layout_kivy_index(self, doc_index: int) -> int:
         """
