@@ -275,6 +275,7 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         line_widget.on_edit_text = self._on_line_edit_text
         line_widget.on_edit_split = self._on_line_edit_split
         line_widget.on_edit_merge = self._on_line_edit_merge
+        line_widget.on_edit_move_line = self._on_line_edit_move_line
         return line_widget
 
     def _on_line_edit_text(self, index: int, text: str):
@@ -705,6 +706,43 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         self._scroll_to_line(target)
         return True
 
+    # ========================================================================
+    # MOVER LÍNEA (Alt+↑↓, Inc 3c.3)
+    # ========================================================================
+
+    def _move_line(self, index, delta: int) -> bool:
+        """
+        Mueve la línea `index` `delta` posiciones (± clampado a los bordes).
+        La línea movida conserva su estado (active/editing viajan con el
+        LineState). Devuelve True si se movió.
+        """
+        if index is None:
+            return False
+        target = index + delta
+        total = self.state_manager.get_total_lines()
+        if not (0 <= target < total):
+            return False  # borde del documento: no hace nada
+        self.state_manager.move_line(index, target)  # reordena filas (on_line_moved)
+        self._scroll_to_line(target)
+        return True
+
+    def move_active_line(self, delta: int) -> bool:
+        """Mueve la línea activa (modo selección). Devuelve True si se movió."""
+        return self._move_line(self.state_manager.get_active_index(), delta)
+
+    def _on_line_edit_move_line(self, index: int, delta: int):
+        """
+        Mueve la línea en edición (Alt+↑↓ con el input enfocado). Tras reordenar,
+        re-enfoca el editor de la línea movida: el remove/add del widget en el
+        layout le quita el foco (texto y cursor se conservan).
+        """
+        if not self._move_line(index, delta):
+            return
+        target = index + delta
+        line_widget = self.get_line_widget(target)
+        if line_widget is not None and line_widget.editor is not None:
+            line_widget.editor.focus = True
+
     def deactivate_current_line(self):
         """Desactivar la línea activa actual (delegado al StateManager)."""
         active_index = self.state_manager.get_active_index()
@@ -753,8 +791,12 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         mods = modifiers or []
 
         if key == self._K_UP:
+            if 'alt' in mods:            # Alt+↑ mueve la línea activa (3c.3)
+                return self.move_active_line(-1)
             return self._navigate(-1)
         elif key == self._K_DOWN:
+            if 'alt' in mods:            # Alt+↓ mueve la línea activa (3c.3)
+                return self.move_active_line(1)
             return self._navigate(1)
         elif key == self._K_PAGEUP:
             return self._navigate(-self._page_size())
@@ -829,6 +871,11 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
 
     def _scroll_to_line(self, index: int):
         """Scrollea para que la línea `index` quede visible en el viewport."""
+        # Si el contenido entra completo en el viewport, no hay nada que
+        # scrollear. Además scroll_to con contenido más chico que el viewport
+        # divide por (alto_contenido - alto_viewport) < 0 y salta el documento.
+        if self.doc_lines_layout.height <= self.height:
+            return
         widget = self.get_line_widget(index)
         if widget is not None:
             self.scroll_to(widget, padding=dp(10), animate=True)

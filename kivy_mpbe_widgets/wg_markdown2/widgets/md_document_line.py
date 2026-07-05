@@ -108,10 +108,12 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         # - on_edit_split(index, cursor_col): parte la línea en el cursor (Enter).
         # - on_edit_merge(index, direction): une con la línea de arriba (-1,
         #   Backspace) o de abajo (+1, Delete).
+        # - on_edit_move_line(index, delta): mueve la línea (Alt+↑↓ en edición).
         self.on_edit_nav = None
         self.on_edit_text = None
         self.on_edit_split = None
         self.on_edit_merge = None
+        self.on_edit_move_line = None
 
         # Observa el modo edición, cambios de tipo y de índice del LineState.
         # El índice sigue al del estado (el StateManager lo reindexa al
@@ -364,8 +366,12 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
             # Enter en edición parte la línea en el cursor (Inc 3c.1)
             return self._request_edit_split()
         if key == self._K_UP:
+            if 'alt' in modifiers:       # Alt+↑ mueve la línea (3c.3)
+                return self._request_edit_move_line(-1)
             return self._request_edit_move(-1, self.editor.cursor_col)
         if key == self._K_DOWN:
+            if 'alt' in modifiers:       # Alt+↓ mueve la línea (3c.3)
+                return self._request_edit_move_line(1)
             return self._request_edit_move(1, self.editor.cursor_col)
         if key == self._K_LEFT and self.editor.cursor_index() == 0:
             return self._request_edit_move(-1, 'end')
@@ -422,6 +428,19 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         index = self.index
         Clock.schedule_once(
             lambda dt: self.on_edit_merge(index, direction), 0)
+        return True
+
+    def _request_edit_move_line(self, delta):
+        """
+        Pide al coordinador mover esta línea `delta` posiciones (Alt+↑↓ en
+        edición). Consume la tecla. Diferido un frame (el reordenamiento de
+        widgets toca el input enfocado).
+        """
+        if self.on_edit_move_line is None:
+            return False
+        index = self.index
+        Clock.schedule_once(
+            lambda dt: self.on_edit_move_line(index, delta), 0)
         return True
 
     def _exit_edit(self):

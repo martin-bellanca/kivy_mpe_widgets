@@ -78,8 +78,8 @@ combinaciones de teclado/mouse** del editor V2, con columnas de **sub-tarea** y
 | Backspace | True | Al inicio de línea: une con la de arriba (el texto va al final de la anterior; cursor en el punto de unión) | `_on_editor_nav()`→`_on_line_edit_merge(-1)` | REMOVED | `_on_line_removed()` | ✅ |
 | Delete | True | Al final de línea: une con la de abajo (el texto de la siguiente va al final de la actual; cursor en el punto de unión) | `_on_editor_nav()`→`_on_line_edit_merge(+1)` | REMOVED | `_on_line_removed()` | ✅ |
 | Delete (multi) | False | Elimina las líneas seleccionadas | `_handle_delete()` | BATCH | `_on_batch_change()` | ⬜ |
-| Alt+↑ | T/F | Mover línea arriba | `_handle_arrow_up(alt)` | MOVED | `_on_line_moved()` | ⬜ |
-| Alt+↓ | T/F | Mover línea abajo | `_handle_arrow_down(alt)` | MOVED | `_on_line_moved()` | ⬜ |
+| Alt+↑ | T/F | Mover línea arriba | `move_active_line(-1)` (sel) · `_on_line_edit_move_line` (edic) | MOVED | `_on_line_moved()` | ✅ |
+| Alt+↓ | T/F | Mover línea abajo | `move_active_line(+1)` (sel) · `_on_line_edit_move_line` (edic) | MOVED | `_on_line_moved()` | ✅ |
 
 ## Inc 3d — Navegación por títulos
 
