@@ -864,7 +864,11 @@ class DocumentStateManager(EventDispatcher):
 
         Logger.info(f"DocumentStateManager: Moving line {from_index} -> {to_index}")
 
-        was_active = self._active_index == from_index
+        # Capturar el estado activo (por objeto) para reponer _active_index a su
+        # índice correcto tras el movimiento — la activa puede no ser la línea
+        # movida (p. ej. al mover un bloque desde el borde, Inc 3e.3).
+        active_state = (self._line_states[self._active_index]
+                        if self._active_index is not None else None)
 
         # Mover en la lista (pop + insert)
         state_to_move = self._line_states.pop(from_index)
@@ -884,8 +888,9 @@ class DocumentStateManager(EventDispatcher):
         # el movimiento corre los índices de todas las líneas intermedias, no
         # sólo la movida). Los flags viven en cada LineState (fuente de verdad).
         self._rebuild_index_sets()
-        if was_active:
-            self._active_index = to_index
+        # Reponer _active_index desde el índice (ya reindexado) del estado activo
+        if active_state is not None:
+            self._active_index = active_state.index
 
         # Sincronizar el documento (lista guardable + links) y geometría
         self._sync_md_lines()

@@ -109,8 +109,8 @@ combinaciones de teclado/mouse** del editor V2, con columnas de **sub-tarea** y
 | Shift+↑↓ | True | Sale de edición a visualización y extiende la selección | `_on_line_edit_select()` | ✅ |
 | Escape | False | Colapsa la selección múltiple a la línea activa | `clear_multi_selection()` | ✅ |
 | Shift+Click | T/F | Extiende la selección hasta la línea clickeada (desde edición, sale a visualización) | `extend_selection_to()` | ✅ |
-| Delete | False | Borra las líneas seleccionadas | `_handle_delete()` | ⬜ 3e.3 |
-| Alt+↑↓ | False | Mueve el bloque seleccionado | `move_selection()` | ⬜ 3e.3 |
+| Delete | False | Borra las líneas seleccionadas (bloque) | `delete_selection()` | ✅ |
+| Alt+↑↓ | False | Mueve el bloque seleccionado (1..n líneas) | `move_selection()` | ✅ |
 | Ctrl+C/X/V | False | Copiar/cortar/pegar el bloque | — | ⬜ 3e.4 |
 | Ctrl+D | False | Duplicar el bloque | — | ⬜ 3e.5 |
 | Tab / Shift+Tab | False | Indentar / desindentar el bloque | — | ⬜ 3e.6 |

@@ -839,9 +839,59 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         self._scroll_to_line(target)
         return True
 
-    def move_active_line(self, delta: int) -> bool:
-        """Mueve la línea activa (modo selección). Devuelve True si se movió."""
-        return self._move_line(self.state_manager.get_active_index(), delta)
+    def move_selection(self, direction: int) -> bool:
+        """
+        Mueve el bloque seleccionado (1..n líneas contiguas) una posición
+        (modo selección, Alt+↑↓, 3c.3/3e.3). Técnica: mover la línea del borde
+        opuesto al otro lado del bloque (subir = la de arriba va abajo del
+        bloque). La selección y el ancla se corren con el bloque.
+        """
+        if not self._selected_set:
+            return False
+        lo = min(self._selected_set)
+        hi = max(self._selected_set)
+        total = self.state_manager.get_total_lines()
+        if direction < 0:
+            if lo == 0:
+                return False
+            self.state_manager.move_line(lo - 1, hi)  # borde sup → debajo del bloque
+            shift = -1
+        else:
+            if hi == total - 1:
+                return False
+            self.state_manager.move_line(hi + 1, lo)  # borde inf → arriba del bloque
+            shift = 1
+
+        # Corrimiento lógico del bloque (el verde acompaña a los widgets solos)
+        self._selected_set = {i + shift for i in self._selected_set}
+        if self._selection_anchor is not None:
+            self._selection_anchor += shift
+        active = self.state_manager.get_active_index()  # move_line ya lo repuso
+        self.active_line_widget = self.get_line_widget(active)
+        self._sync_selected_flags()
+        self._scroll_to_line(active)
+        return True
+
+    def delete_selection(self) -> bool:
+        """
+        Borra las líneas del bloque seleccionado (Delete, 3e.3). Tras borrar,
+        selecciona la línea que queda en la posición del borde superior.
+        """
+        if not self._selected_set:
+            return False
+        lo = min(self._selected_set)
+        hi = max(self._selected_set)
+        # Borrar de abajo hacia arriba para no correr los índices bajo los pies
+        for i in range(hi, lo - 1, -1):
+            self.state_manager.remove_line(i)
+        self._selected_set = set()
+        self._selection_anchor = None
+        total = self.state_manager.get_total_lines()
+        if total > 0:
+            self.activate_line(min(lo, total - 1))
+        else:
+            self.active_line_widget = None
+        return True
 
     def _on_line_edit_move_line(self, index: int, delta: int):
         """
@@ -915,6 +965,7 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
     _K_ENTER, _K_NUMPAD_ENTER = 13, 271
     _K_F2 = 283
     _K_ESCAPE = 27
+    _K_DELETE = 127
 
     def _is_editing(self) -> bool:
         """True si la línea activa está en modo edición."""
@@ -947,20 +998,20 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         if key == self._K_UP:
             if 'ctrl' in mods:  # Ctrl+↑ título (3d): +Shift mismo nivel
                 return self._go_to_title(-1, 'same' if 'shift' in mods else 'any')
-            if 'alt' in mods:            # Alt+Shift+↑ título padre (3d.3) / Alt+↑ mover (3c.3)
+            if 'alt' in mods:            # Alt+Shift+↑ título padre (3d.3) / Alt+↑ mover (3c.3/3e.3)
                 if 'shift' in mods:
                     return self._go_to_title(-1, 'parent')
-                return self.move_active_line(-1)
+                return self.move_selection(-1)
             if 'shift' in mods:          # Shift+↑ extiende la selección (3e.1)
                 return self.extend_selection(-1)
             return self._navigate(-1)
         elif key == self._K_DOWN:
             if 'ctrl' in mods:  # Ctrl+↓ título (3d): +Shift mismo nivel
                 return self._go_to_title(1, 'same' if 'shift' in mods else 'any')
-            if 'alt' in mods:            # Alt+Shift+↓ título padre (3d.3) / Alt+↓ mover (3c.3)
+            if 'alt' in mods:            # Alt+Shift+↓ título padre (3d.3) / Alt+↓ mover (3c.3/3e.3)
                 if 'shift' in mods:
                     return self._go_to_title(1, 'parent')
-                return self.move_active_line(1)
+                return self.move_selection(1)
             if 'shift' in mods:          # Shift+↓ extiende la selección (3e.1)
                 return self.extend_selection(1)
             return self._navigate(1)
@@ -982,6 +1033,9 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
             # Escape colapsa la selección múltiple a la línea activa (3e.1)
             self.clear_multi_selection()
             return True
+        elif key == self._K_DELETE and self._selected_set:
+            # Delete borra el bloque seleccionado (3e.3)
+            return self.delete_selection()
         return False
 
     def _edit_active_line(self) -> bool:
