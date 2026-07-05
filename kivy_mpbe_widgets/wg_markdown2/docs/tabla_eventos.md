@@ -117,6 +117,8 @@ combinaciones de teclado/mouse** del editor V2, con columnas de **sub-tarea** y
 | Tab / Shift+Tab | False | Indentar / desindentar el bloque (2 espacios) | `indent_selection()` | ✅ |
 | Ctrl+Espacio | T/F | Toggle tarea: en visualización el bloque, en edición la línea (`[ ]`↔`[x]`) | `toggle_task_block()` / `_toggle_task_in_editor()` | ✅ |
 | Ctrl+Click | False | Togglea el checkbox de la línea de tarea clickeada | `toggle_task_line()` | ✅ |
+| Ctrl+T | False | Transforma el bloque a tarea `- [ ] ` ↔ texto | `transform_selection('task')` | ✅ |
+| Ctrl+L | False | Transforma el bloque a lista `- ` ↔ texto | `transform_selection('list')` | ✅ |
 
 ---
 

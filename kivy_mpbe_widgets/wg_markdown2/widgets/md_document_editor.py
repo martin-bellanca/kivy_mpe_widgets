@@ -1091,6 +1091,54 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
             self._set_task_checked(i, check)
         return True
 
+    # -------------------------------------- transformar a tarea/lista (3e.8)
+    _MARKER_RE = re.compile(r'(-\s*)?\[[ xX]\]\s?|-\s+')  # marcador tarea o lista
+
+    def _is_list_line(self, index: int) -> bool:
+        """Lista simple (`- texto`), no tarea."""
+        md = self.state_manager.get_md_line(index)
+        if md is None:
+            return False
+        return (md.md_text.lstrip(' \t').startswith('- ')
+                and not self._is_task_line(index))
+
+    @staticmethod
+    def _split_marker(text: str):
+        """Devuelve (sangría, contenido) quitando el marcador de tarea/lista."""
+        stripped = text.lstrip(' \t')
+        indent = text[:len(text) - len(stripped)]
+        m = MDDocumentEditor._MARKER_RE.match(stripped)
+        if m:
+            return indent, stripped[m.end():]
+        return indent, stripped
+
+    def transform_selection(self, target: str) -> bool:
+        """
+        Ctrl+T ('task') / Ctrl+L ('list'): transforma el bloque en los 2 sentidos.
+        Si **todas** las líneas ya son del tipo destino → las vuelve texto simple;
+        si no → convierte todas al tipo (preservando sangría). Prefijo estándar:
+        tarea `- [ ] `, lista `- `.
+        """
+        if not self._selected_set:
+            return False
+        lines = sorted(self._selected_set)
+        is_type = self._is_task_line if target == 'task' else self._is_list_line
+        make_plain = all(is_type(i) for i in lines)
+        prefix = '- [ ] ' if target == 'task' else '- '
+        for i in lines:
+            md = self.state_manager.get_md_line(i)
+            if md is None:
+                continue
+            indent, content = self._split_marker(md.md_text)
+            new_text = indent + ('' if make_plain else prefix) + content
+            if new_text == md.md_text:
+                continue
+            self.state_manager.update_line_text(i, new_text)
+            w = self.get_line_widget(i)
+            if w is not None:
+                w.label.md_text = new_text
+        return True
+
     def duplicate_selection(self) -> bool:
         """Ctrl+D: duplica el bloque debajo de sí mismo y selecciona la copia."""
         if not self._selected_set:
@@ -1182,6 +1230,7 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
     _K_D = 100                        # duplicar (con Ctrl)
     _K_TAB = 9                        # indentar / desindentar (Shift)
     _K_SPACE = 32                     # toggle tarea (con Ctrl)
+    _K_T, _K_L = 116, 108             # transformar a tarea / lista (con Ctrl)
 
     def _is_editing(self) -> bool:
         """True si la línea activa está en modo edición."""
@@ -1266,6 +1315,10 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         elif key == self._K_SPACE and 'ctrl' in mods and self._selected_set:
             # Ctrl+Espacio togglea las tareas del bloque (3e.7)
             return self.toggle_task_block()
+        elif key == self._K_T and 'ctrl' in mods and self._selected_set:
+            return self.transform_selection('task')   # Ctrl+T (3e.8)
+        elif key == self._K_L and 'ctrl' in mods and self._selected_set:
+            return self.transform_selection('list')   # Ctrl+L (3e.8)
         return False
 
     def _edit_active_line(self) -> bool:
