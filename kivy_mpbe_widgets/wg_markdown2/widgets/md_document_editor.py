@@ -112,6 +112,12 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         # rango (donde arrancó la selección con Shift).
         self._selected_set = set()
         self._selection_anchor = None
+        # Clipboard interno estructurado (Inc 3e.4): lista de md_text por línea
+        # (preserva líneas multilínea a futuro: tablas/mermaid). _clipboard_sig
+        # = firma de lo puesto en el clipboard del sistema, para detectar si el
+        # contenido lo cambió otra app.
+        self._clipboard_lines = None
+        self._clipboard_sig = None
 
         # ====================================================================
         # Configuración de ScrollView (ANTES de super().__init__)
@@ -893,6 +899,97 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
             self.active_line_widget = None
         return True
 
+    # ------------------------------------------------------ portapapeles (3e.4)
+    def _select_block(self, lo: int, hi: int):
+        """Fija el bloque seleccionado [lo..hi] (verde), ancla en lo y activa hi."""
+        new_set = set(range(lo, hi + 1))
+        for i in self._selected_set - new_set:
+            w = self.get_line_widget(i)
+            if w is not None:
+                w.unselect('fade')
+        for i in new_set - self._selected_set:
+            w = self.get_line_widget(i)
+            if w is not None:
+                w.select('fade')
+        self._selected_set = new_set
+        self._selection_anchor = lo
+        self.state_manager.activate_line(hi)
+        self.active_line_widget = self.get_line_widget(hi)
+        self._sync_selected_flags()
+        self._scroll_to_line(hi)
+        self._kbd_active = True
+
+    def _selection_texts(self):
+        """md_text de las líneas seleccionadas, en orden."""
+        return [self.state_manager.get_md_line(i).md_text
+                for i in sorted(self._selected_set)]
+
+    def copy_selection(self) -> bool:
+        """
+        Ctrl+C: copia el bloque. Guarda un clipboard interno estructurado
+        (una entrada por línea, preserva md_text multilínea a futuro) y también
+        el clipboard del sistema (unido por \\n) para interoperar con otras apps.
+        """
+        if not self._selected_set:
+            return False
+        from kivy.core.clipboard import Clipboard
+        self._clipboard_lines = self._selection_texts()
+        self._clipboard_sig = '\n'.join(self._clipboard_lines)
+        Clipboard.copy(self._clipboard_sig)
+        return True
+
+    def cut_selection(self) -> bool:
+        """Ctrl+X: copia el bloque y lo borra."""
+        if not self._selected_set:
+            return False
+        self.copy_selection()
+        self.delete_selection()
+        return True
+
+    def paste_clipboard(self) -> bool:
+        """
+        Ctrl+V: pega las líneas del portapapeles. Usa el clipboard interno
+        (estructura exacta) si el del sistema no cambió; si vino de otra app,
+        parsea su texto por líneas. Con **una** línea seleccionada inserta
+        debajo de la activa; con **varias** reemplaza el bloque. Selecciona lo
+        pegado.
+        """
+        from kivy.core.clipboard import Clipboard
+        system_text = Clipboard.paste()
+        if (self._clipboard_lines is not None
+                and system_text == self._clipboard_sig):
+            lines = list(self._clipboard_lines)   # estructura interna exacta
+        else:
+            if not system_text:
+                return False
+            lines = system_text.splitlines()       # texto externo
+        if not lines:
+            return False
+
+        if len(self._selected_set) > 1:
+            # Reemplazar el bloque: borrar y pegar en su posición
+            lo = min(self._selected_set)
+            hi = max(self._selected_set)
+            for i in range(hi, lo - 1, -1):
+                self.state_manager.remove_line(i)
+            # Las líneas borradas ya no existen: limpiar el set (sus índices
+            # apuntarían a otras líneas y _select_block des-seleccionaría mal).
+            self._selected_set = set()
+            insert_at = lo
+        else:
+            # Insertar debajo de la línea activa (o al final si no hay activa)
+            active = self.state_manager.get_active_index()
+            insert_at = (active + 1) if active is not None \
+                else self.state_manager.get_total_lines()
+
+        for offset, txt in enumerate(lines):
+            new_md_line = MDLine(txt, None, None)
+            new_md_line.update_type()
+            self.state_manager.insert_line(insert_at + offset, new_md_line)
+
+        self._select_block(insert_at, insert_at + len(lines) - 1)
+        return True
+
     def _on_line_edit_move_line(self, index: int, delta: int):
         """
         Mueve la línea en edición (Alt+↑↓ con el input enfocado). Tras reordenar,
@@ -966,6 +1063,7 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
     _K_F2 = 283
     _K_ESCAPE = 27
     _K_DELETE = 127
+    _K_C, _K_X, _K_V = 99, 120, 118  # copiar / cortar / pegar (con Ctrl)
 
     def _is_editing(self) -> bool:
         """True si la línea activa está en modo edición."""
@@ -1036,6 +1134,12 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         elif key == self._K_DELETE and self._selected_set:
             # Delete borra el bloque seleccionado (3e.3)
             return self.delete_selection()
+        elif key == self._K_C and 'ctrl' in mods and self._selected_set:
+            return self.copy_selection()          # Ctrl+C (3e.4)
+        elif key == self._K_X and 'ctrl' in mods and self._selected_set:
+            return self.cut_selection()           # Ctrl+X (3e.4)
+        elif key == self._K_V and 'ctrl' in mods:
+            return self.paste_clipboard()         # Ctrl+V (3e.4)
         return False
 
     def _edit_active_line(self) -> bool:
