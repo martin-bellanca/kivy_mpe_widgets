@@ -844,15 +844,19 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         mods = modifiers or []
 
         if key == self._K_UP:
-            if 'ctrl' in mods and 'shift' not in mods:  # Ctrl+↑ título anterior (3d.1)
-                return self._go_to_title(-1, 'any')
-            if 'alt' in mods:            # Alt+↑ mueve la línea activa (3c.3)
+            if 'ctrl' in mods:  # Ctrl+↑ título (3d): +Shift mismo nivel
+                return self._go_to_title(-1, 'same' if 'shift' in mods else 'any')
+            if 'alt' in mods:            # Alt+Shift+↑ título padre (3d.3) / Alt+↑ mover (3c.3)
+                if 'shift' in mods:
+                    return self._go_to_title(-1, 'parent')
                 return self.move_active_line(-1)
             return self._navigate(-1)
         elif key == self._K_DOWN:
-            if 'ctrl' in mods and 'shift' not in mods:  # Ctrl+↓ título siguiente (3d.1)
-                return self._go_to_title(1, 'any')
-            if 'alt' in mods:            # Alt+↓ mueve la línea activa (3c.3)
+            if 'ctrl' in mods:  # Ctrl+↓ título (3d): +Shift mismo nivel
+                return self._go_to_title(1, 'same' if 'shift' in mods else 'any')
+            if 'alt' in mods:            # Alt+Shift+↓ título padre (3d.3) / Alt+↓ mover (3c.3)
+                if 'shift' in mods:
+                    return self._go_to_title(1, 'parent')
                 return self.move_active_line(1)
             return self._navigate(1)
         elif key == self._K_PAGEUP:

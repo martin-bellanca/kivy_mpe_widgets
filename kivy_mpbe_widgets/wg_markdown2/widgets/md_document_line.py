@@ -373,15 +373,21 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
             # Enter parte la línea en el cursor (Inc 3c.1)
             return self._request_edit_split()
         if key == self._K_UP:
-            if 'ctrl' in modifiers and 'shift' not in modifiers:  # Ctrl+↑ título (3d.1)
-                return self._request_edit_title_nav(-1, 'any')
-            if 'alt' in modifiers:       # Alt+↑ mueve la línea (3c.3)
+            if 'ctrl' in modifiers:  # Ctrl+↑ título (3d): +Shift mismo nivel
+                return self._request_edit_title_nav(
+                    -1, 'same' if 'shift' in modifiers else 'any')
+            if 'alt' in modifiers:       # Alt+Shift+↑ título padre (3d.3) / Alt+↑ mover (3c.3)
+                if 'shift' in modifiers:
+                    return self._request_edit_title_nav(-1, 'parent')
                 return self._request_edit_move_line(-1)
             return self._request_edit_move(-1, self.editor.cursor_col)
         if key == self._K_DOWN:
-            if 'ctrl' in modifiers and 'shift' not in modifiers:  # Ctrl+↓ título (3d.1)
-                return self._request_edit_title_nav(1, 'any')
-            if 'alt' in modifiers:       # Alt+↓ mueve la línea (3c.3)
+            if 'ctrl' in modifiers:  # Ctrl+↓ título (3d): +Shift mismo nivel
+                return self._request_edit_title_nav(
+                    1, 'same' if 'shift' in modifiers else 'any')
+            if 'alt' in modifiers:       # Alt+Shift+↓ título padre (3d.3) / Alt+↓ mover (3c.3)
+                if 'shift' in modifiers:
+                    return self._request_edit_title_nav(1, 'parent')
                 return self._request_edit_move_line(1)
             return self._request_edit_move(1, self.editor.cursor_col)
         if key == self._K_LEFT and self.editor.cursor_index() == 0:

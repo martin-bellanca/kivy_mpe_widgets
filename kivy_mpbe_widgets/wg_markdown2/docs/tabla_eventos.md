@@ -87,10 +87,13 @@ combinaciones de teclado/mouse** del editor V2, con columnas de **sub-tarea** y
 |---|---|---|---|---|
 | Ctrl+↑ | T/F | Mueve la selección al título anterior (cualquier nivel) | `_go_to_title(-1,'any')` | ✅ |
 | Ctrl+↓ | T/F | Mueve la selección al título siguiente (cualquier nivel) | `_go_to_title(+1,'any')` | ✅ |
-| Ctrl+Shift+↑ | T/F | Título anterior del mismo nivel | `_handle_prev_title_level()` | ⬜ |
-| Ctrl+Shift+↓ | T/F | Título siguiente del mismo nivel | `_handle_next_title_level()` | ⬜ |
-| Alt+Shift+↑ | T/F | Título padre anterior | `_handle_parent_title()` | ⬜ |
-| Alt+Shift+↓ | T/F | Título padre posterior | `_handle_parent_title()` | ⬜ |
+| Ctrl+Shift+↑ | T/F | Título anterior del mismo nivel | `_go_to_title(-1,'same')` | ✅ |
+| Ctrl+Shift+↓ | T/F | Título siguiente del mismo nivel | `_go_to_title(+1,'same')` | ✅ |
+| Alt+Shift+↑ | T/F | Título padre anterior (primer título de nivel superior hacia arriba) | `_go_to_title(-1,'parent')` | ✅ |
+| Alt+Shift+↓ | T/F | Título padre posterior (primer título de nivel superior hacia abajo) | `_go_to_title(+1,'parent')` | ✅ |
+
+> Nota: el padre queda en **Alt+Shift+↑↓** (no Ctrl+Alt) porque en Linux el
+> escritorio suele reservar Ctrl+Alt+flechas para cambiar de workspace.
 
 ## Inc 3e — Selección múltiple de líneas
 
