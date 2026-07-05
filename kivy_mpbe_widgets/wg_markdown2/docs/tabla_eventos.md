@@ -115,7 +115,8 @@ combinaciones de teclado/mouse** del editor V2, con columnas de **sub-tarea** y
 | Ctrl+V | False | Pegar: 1 línea sel. → debajo; >1 → reemplaza. Interno exacto o texto externo | `paste_clipboard()` | ✅ |
 | Ctrl+D | False | Duplicar el bloque debajo (selecciona la copia) | `duplicate_selection()` | ✅ |
 | Tab / Shift+Tab | False | Indentar / desindentar el bloque (2 espacios) | `indent_selection()` | ✅ |
-| Toggle tarea | False | `[ ]`↔`[x]` sobre el bloque | — | ⬜ 3e.7 |
+| Ctrl+Espacio | T/F | Toggle tarea: en visualización el bloque, en edición la línea (`[ ]`↔`[x]`) | `toggle_task_block()` / `_toggle_task_in_editor()` | ✅ |
+| Ctrl+Click | False | Togglea el checkbox de la línea de tarea clickeada | `toggle_task_line()` | ✅ |
 
 ---
 

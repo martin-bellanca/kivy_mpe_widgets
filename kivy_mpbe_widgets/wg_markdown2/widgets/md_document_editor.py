@@ -20,6 +20,7 @@ Fecha: 2026-01-12
 Autor: Martin Pablo Bellanca
 """
 
+import re
 from typing import Optional
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.behaviors import FocusBehavior
@@ -549,6 +550,18 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
                             if idx is not None:
                                 self.state_manager.update_state(idx, editing=False)
                         self.extend_selection_to(line.index)
+                    elif 'ctrl' in Window.modifiers:
+                        # Ctrl+Click togglea la tarea (3e.7). Desde edición sale
+                        # a visualización. En no-tarea, sólo selecciona.
+                        if editing:
+                            idx = self.state_manager.get_active_index()
+                            if idx is not None:
+                                self.state_manager.update_state(idx, editing=False)
+                        if self._is_task_line(line.index):
+                            self.activate_line(line.index)
+                            self.toggle_task_line(line.index)
+                        else:
+                            self.activate_line(line.index)
                     elif line.index == self.state_manager.get_active_index():
                         if not editing:
                             # click en la línea ya seleccionada → editar
@@ -1030,6 +1043,54 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
             count += 1
         return text[count:]
 
+    # ------------------------------------------------------ tareas (3e.7)
+    # Tarea: '[ ] ...' o '- [ ] ...' (el guión inicial es opcional en el proyecto)
+    _TASK_LINE_RE = re.compile(r'^\s*(-\s*)?\[[ xX]\]')
+    _BOX_RE = re.compile(r'\[[ xX]\]')                  # el checkbox
+
+    def _is_task_line(self, index: int) -> bool:
+        md = self.state_manager.get_md_line(index)
+        return md is not None and bool(self._TASK_LINE_RE.match(md.md_text))
+
+    def _is_task_checked(self, index: int) -> bool:
+        md = self.state_manager.get_md_line(index)
+        m = self._BOX_RE.search(md.md_text) if md is not None else None
+        return bool(m) and md.md_text[m.start() + 1] in 'xX'
+
+    def _set_task_checked(self, index: int, checked: bool):
+        md = self.state_manager.get_md_line(index)
+        if md is None:
+            return
+        m = self._BOX_RE.search(md.md_text)
+        if not m:
+            return
+        box = '[x]' if checked else '[ ]'
+        new_text = md.md_text[:m.start()] + box + md.md_text[m.end():]
+        self.state_manager.update_line_text(index, new_text)
+        w = self.get_line_widget(index)
+        if w is not None:
+            w.label.md_text = new_text
+
+    def toggle_task_line(self, index: int) -> bool:
+        """Togglea el checkbox de una línea de tarea (Ctrl+Click)."""
+        if not self._is_task_line(index):
+            return False
+        self._set_task_checked(index, not self._is_task_checked(index))
+        return True
+
+    def toggle_task_block(self) -> bool:
+        """
+        Ctrl+Espacio en visualización: togglea las tareas del bloque. Si todas
+        están marcadas → las desmarca; si hay alguna sin marcar → marca todas.
+        """
+        tasks = [i for i in sorted(self._selected_set) if self._is_task_line(i)]
+        if not tasks:
+            return False
+        check = not all(self._is_task_checked(i) for i in tasks)
+        for i in tasks:
+            self._set_task_checked(i, check)
+        return True
+
     def duplicate_selection(self) -> bool:
         """Ctrl+D: duplica el bloque debajo de sí mismo y selecciona la copia."""
         if not self._selected_set:
@@ -1120,6 +1181,7 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
     _K_C, _K_X, _K_V = 99, 120, 118  # copiar / cortar / pegar (con Ctrl)
     _K_D = 100                        # duplicar (con Ctrl)
     _K_TAB = 9                        # indentar / desindentar (Shift)
+    _K_SPACE = 32                     # toggle tarea (con Ctrl)
 
     def _is_editing(self) -> bool:
         """True si la línea activa está en modo edición."""
@@ -1201,6 +1263,9 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         elif key == self._K_TAB and self._selected_set:
             # Tab indenta / Shift+Tab desindenta el bloque (3e.6)
             return self.indent_selection(-1 if 'shift' in mods else 1)
+        elif key == self._K_SPACE and 'ctrl' in mods and self._selected_set:
+            # Ctrl+Espacio togglea las tareas del bloque (3e.7)
+            return self.toggle_task_block()
         return False
 
     def _edit_active_line(self) -> bool:

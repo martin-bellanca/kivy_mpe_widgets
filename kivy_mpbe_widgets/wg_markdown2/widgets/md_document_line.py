@@ -350,6 +350,8 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
     _K_LEFT, _K_RIGHT = 276, 275
     _K_ENTER, _K_NUMPAD_ENTER = 13, 271
     _K_BACKSPACE, _K_DELETE = 8, 127
+    _K_SPACE = 32
+    _BOX_RE = re.compile(r'\[[ xX]\]')
 
     def _on_editor_nav(self, keycode, modifiers):
         """
@@ -368,6 +370,9 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         if key == self._K_F2:
             self._commit()
             return True
+        if key == self._K_SPACE and 'ctrl' in modifiers:
+            # Ctrl+Espacio togglea el checkbox de la tarea en edición (3e.7)
+            return self._toggle_task_in_editor()
         if key in (self._K_ENTER, self._K_NUMPAD_ENTER):
             if 'shift' in modifiers:
                 # Shift+Enter inserta una línea vacía arriba (Inc 3c.1)
@@ -489,6 +494,22 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         cursor_col = self.editor.cursor_col
         Clock.schedule_once(
             lambda dt: self.on_edit_title_nav(direction, kind, cursor_col), 0)
+        return True
+
+    def _toggle_task_in_editor(self):
+        """
+        Ctrl+Espacio en edición: si la línea es tarea, togglea su checkbox
+        (`[ ]`↔`[x]`) en el input (persiste + re-renderiza), sin mover el cursor.
+        """
+        text = self.editor.text
+        m = self._BOX_RE.search(text)
+        if not m:
+            return False  # no es tarea: no consumir
+        checked = text[m.start() + 1] in 'xX'
+        box = '[ ]' if checked else '[x]'
+        col = self.editor.cursor_col
+        self.editor.text = text[:m.start()] + box + text[m.end():]
+        self.editor.cursor = (col, 0)
         return True
 
     def _request_edit_select(self, direction):
