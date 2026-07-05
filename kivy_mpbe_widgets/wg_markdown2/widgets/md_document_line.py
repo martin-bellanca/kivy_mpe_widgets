@@ -109,11 +109,13 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         # - on_edit_merge(index, direction): une con la línea de arriba (-1,
         #   Backspace) o de abajo (+1, Delete).
         # - on_edit_move_line(index, delta): mueve la línea (Alt+↑↓ en edición).
+        # - on_edit_insert_above(index): inserta línea vacía arriba (Shift+Enter).
         self.on_edit_nav = None
         self.on_edit_text = None
         self.on_edit_split = None
         self.on_edit_merge = None
         self.on_edit_move_line = None
+        self.on_edit_insert_above = None
 
         # Observa el modo edición, cambios de tipo y de índice del LineState.
         # El índice sigue al del estado (el StateManager lo reindexa al
@@ -363,7 +365,10 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
             self._commit()
             return True
         if key in (self._K_ENTER, self._K_NUMPAD_ENTER):
-            # Enter en edición parte la línea en el cursor (Inc 3c.1)
+            if 'shift' in modifiers:
+                # Shift+Enter inserta una línea vacía arriba (Inc 3c.1)
+                return self._request_edit_insert_above()
+            # Enter parte la línea en el cursor (Inc 3c.1)
             return self._request_edit_split()
         if key == self._K_UP:
             if 'alt' in modifiers:       # Alt+↑ mueve la línea (3c.3)
@@ -428,6 +433,18 @@ class MDDocumentLine(ThemableBehavior, BoxLayout):
         index = self.index
         Clock.schedule_once(
             lambda dt: self.on_edit_merge(index, direction), 0)
+        return True
+
+    def _request_edit_insert_above(self):
+        """
+        Pide al coordinador insertar una línea vacía arriba de esta y editarla
+        (Shift+Enter). Consume la tecla. Diferido un frame (como split/merge).
+        """
+        if self.on_edit_insert_above is None:
+            return False
+        index = self.index
+        Clock.schedule_once(
+            lambda dt: self.on_edit_insert_above(index), 0)
         return True
 
     def _request_edit_move_line(self, delta):

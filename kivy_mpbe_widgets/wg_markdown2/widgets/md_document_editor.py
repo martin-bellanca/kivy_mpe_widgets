@@ -276,6 +276,7 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         line_widget.on_edit_split = self._on_line_edit_split
         line_widget.on_edit_merge = self._on_line_edit_merge
         line_widget.on_edit_move_line = self._on_line_edit_move_line
+        line_widget.on_edit_insert_above = self._on_line_edit_insert_above
         return line_widget
 
     def _on_line_edit_text(self, index: int, text: str):
@@ -304,6 +305,17 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         self.state_manager.insert_line(index + 1, new_md_line)
         # Editar la nueva línea con el cursor al inicio
         self.edit_line(index + 1, cursor_col=0)
+
+    def _on_line_edit_insert_above(self, index: int):
+        """
+        Inserta una línea vacía ARRIBA de `index` y pasa a editarla (Shift+Enter,
+        3c.1). La línea actual baja sin cambios; la edición va a la nueva (índice
+        `index`) con el cursor al inicio.
+        """
+        new_md_line = MDLine('', None, None)
+        new_md_line.update_type()
+        self.state_manager.insert_line(index, new_md_line)  # empuja la actual abajo
+        self.edit_line(index, cursor_col=0)
 
     def _on_line_edit_merge(self, index: int, direction: int):
         """
