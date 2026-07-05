@@ -990,6 +990,46 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         self._select_block(insert_at, insert_at + len(lines) - 1)
         return True
 
+    # Unidad de sangría para indentar/desindentar el bloque (3e.6)
+    _INDENT_UNIT = '  '
+
+    def indent_selection(self, delta: int) -> bool:
+        """
+        Tab/Shift+Tab: indenta (delta>0) o desindenta (delta<0) cada línea del
+        bloque seleccionado. El texto cambia vía update_line_text (mantiene el
+        tipo) y se refresca el label; la selección no se mueve.
+        """
+        if not self._selected_set:
+            return False
+        unit = self._INDENT_UNIT
+        for i in sorted(self._selected_set):
+            md = self.state_manager.get_md_line(i)
+            if md is None:
+                continue
+            text = md.md_text
+            if delta > 0:
+                new_text = unit + text
+            else:
+                new_text = self._outdent(text, len(unit))
+            if new_text == text:
+                continue
+            self.state_manager.update_line_text(i, new_text)
+            # update_line_text no toca el label si el tipo no cambió → refrescar
+            w = self.get_line_widget(i)
+            if w is not None:
+                w.label.md_text = new_text
+        return True
+
+    @staticmethod
+    def _outdent(text: str, n: int) -> str:
+        """Quita hasta `n` espacios iniciales (o un tab) del texto."""
+        if text.startswith('\t'):
+            return text[1:]
+        count = 0
+        while count < n and count < len(text) and text[count] == ' ':
+            count += 1
+        return text[count:]
+
     def duplicate_selection(self) -> bool:
         """Ctrl+D: duplica el bloque debajo de sí mismo y selecciona la copia."""
         if not self._selected_set:
@@ -1079,6 +1119,7 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
     _K_DELETE = 127
     _K_C, _K_X, _K_V = 99, 120, 118  # copiar / cortar / pegar (con Ctrl)
     _K_D = 100                        # duplicar (con Ctrl)
+    _K_TAB = 9                        # indentar / desindentar (Shift)
 
     def _is_editing(self) -> bool:
         """True si la línea activa está en modo edición."""
@@ -1157,6 +1198,9 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
             return self.paste_clipboard()         # Ctrl+V (3e.4)
         elif key == self._K_D and 'ctrl' in mods and self._selected_set:
             return self.duplicate_selection()     # Ctrl+D (3e.5)
+        elif key == self._K_TAB and self._selected_set:
+            # Tab indenta / Shift+Tab desindenta el bloque (3e.6)
+            return self.indent_selection(-1 if 'shift' in mods else 1)
         return False
 
     def _edit_active_line(self) -> bool:
