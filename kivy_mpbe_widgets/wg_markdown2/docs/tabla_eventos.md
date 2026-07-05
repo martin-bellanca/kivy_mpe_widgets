@@ -113,7 +113,7 @@ combinaciones de teclado/mouse** del editor V2, con columnas de **sub-tarea** y
 | Alt+↑↓ | False | Mueve el bloque seleccionado (1..n líneas) | `move_selection()` | ✅ |
 | Ctrl+C / Ctrl+X | False | Copiar / cortar el bloque (clipboard interno estructurado + sistema) | `copy_selection()` / `cut_selection()` | ✅ |
 | Ctrl+V | False | Pegar: 1 línea sel. → debajo; >1 → reemplaza. Interno exacto o texto externo | `paste_clipboard()` | ✅ |
-| Ctrl+D | False | Duplicar el bloque | — | ⬜ 3e.5 |
+| Ctrl+D | False | Duplicar el bloque debajo (selecciona la copia) | `duplicate_selection()` | ✅ |
 | Tab / Shift+Tab | False | Indentar / desindentar el bloque | — | ⬜ 3e.6 |
 | Toggle tarea | False | `[ ]`↔`[x]` sobre el bloque | — | ⬜ 3e.7 |
 

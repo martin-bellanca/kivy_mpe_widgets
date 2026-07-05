@@ -990,6 +990,20 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         self._select_block(insert_at, insert_at + len(lines) - 1)
         return True
 
+    def duplicate_selection(self) -> bool:
+        """Ctrl+D: duplica el bloque debajo de sí mismo y selecciona la copia."""
+        if not self._selected_set:
+            return False
+        hi = max(self._selected_set)
+        texts = self._selection_texts()
+        insert_at = hi + 1
+        for offset, txt in enumerate(texts):
+            new_md_line = MDLine(txt, None, None)
+            new_md_line.update_type()
+            self.state_manager.insert_line(insert_at + offset, new_md_line)
+        self._select_block(insert_at, insert_at + len(texts) - 1)
+        return True
+
     def _on_line_edit_move_line(self, index: int, delta: int):
         """
         Mueve la línea en edición (Alt+↑↓ con el input enfocado). Tras reordenar,
@@ -1064,6 +1078,7 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
     _K_ESCAPE = 27
     _K_DELETE = 127
     _K_C, _K_X, _K_V = 99, 120, 118  # copiar / cortar / pegar (con Ctrl)
+    _K_D = 100                        # duplicar (con Ctrl)
 
     def _is_editing(self) -> bool:
         """True si la línea activa está en modo edición."""
@@ -1140,6 +1155,8 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
             return self.cut_selection()           # Ctrl+X (3e.4)
         elif key == self._K_V and 'ctrl' in mods:
             return self.paste_clipboard()         # Ctrl+V (3e.4)
+        elif key == self._K_D and 'ctrl' in mods and self._selected_set:
+            return self.duplicate_selection()     # Ctrl+D (3e.5)
         return False
 
     def _edit_active_line(self) -> bool:
