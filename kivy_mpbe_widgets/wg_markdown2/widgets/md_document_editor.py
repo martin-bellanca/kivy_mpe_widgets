@@ -535,7 +535,15 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
                 line = self._line_at(touch.pos)
                 if line is not None:
                     editing = self._is_editing()
-                    if line.index == self.state_manager.get_active_index():
+                    if 'shift' in Window.modifiers:
+                        # Shift+Click extiende la selección hasta la línea
+                        # clickeada (3e.2). Desde edición, sale a visualización.
+                        if editing:
+                            idx = self.state_manager.get_active_index()
+                            if idx is not None:
+                                self.state_manager.update_state(idx, editing=False)
+                        self.extend_selection_to(line.index)
+                    elif line.index == self.state_manager.get_active_index():
                         if not editing:
                             # click en la línea ya seleccionada → editar
                             # (cursor en el punto del click)
@@ -682,11 +690,7 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
             self.state_manager.select_line(i, multi=True)
 
     def extend_selection(self, direction: int) -> bool:
-        """
-        Extiende la selección contigua con Shift+↑↓. La primera vez fija el
-        ancla en la línea activa; luego mueve el extremo activo y el bloque
-        seleccionado es [min(ancla, activo) .. max(ancla, activo)].
-        """
+        """Extiende la selección contigua con Shift+↑↓ (mueve el extremo ±1)."""
         active = self.state_manager.get_active_index()
         if active is None:
             return False
@@ -694,11 +698,22 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         new_active = active + direction
         if not (0 <= new_active < total):
             return False  # borde del documento
-        if self._selection_anchor is None:
-            self._selection_anchor = active
+        return self.extend_selection_to(new_active)
 
-        lo = min(self._selection_anchor, new_active)
-        hi = max(self._selection_anchor, new_active)
+    def extend_selection_to(self, target: int) -> bool:
+        """
+        Extiende la selección contigua hasta `target` (Shift+↑↓ y Shift+Click).
+        La primera vez fija el ancla en la línea activa; el bloque queda
+        [min(ancla, target) .. max(ancla, target)] y el extremo activo va a target.
+        """
+        if not (0 <= target < self.state_manager.get_total_lines()):
+            return False
+        active = self.state_manager.get_active_index()
+        if self._selection_anchor is None:
+            self._selection_anchor = active if active is not None else target
+
+        lo = min(self._selection_anchor, target)
+        hi = max(self._selection_anchor, target)
         new_set = set(range(lo, hi + 1))
 
         # Diff visual del verde (fade para el bloque)
@@ -713,10 +728,11 @@ class MDDocumentEditor(FocusBehavior, ScrollView, ThemableBehavior):
         self._selected_set = new_set
 
         # Mover el extremo activo (sin rehacer el verde de selección simple)
-        self.state_manager.activate_line(new_active)
-        self.active_line_widget = self.get_line_widget(new_active)
+        self.state_manager.activate_line(target)
+        self.active_line_widget = self.get_line_widget(target)
         self._sync_selected_flags()
-        self._scroll_to_line(new_active)
+        self._scroll_to_line(target)
+        self._kbd_active = True
         return True
 
     def clear_multi_selection(self):
